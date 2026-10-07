@@ -1,230 +1,270 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Running Dashboard</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Running Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1><i class="fa-solid fa-person-running"></i> Running Dashboard</h1>
-      <div class="header-actions">
-        <input type="file" id="gpx-input" accept=".gpx" style="display: none;">
-        <button class="btn-cta-small" onclick="document.getElementById('gpx-input').click()">
-          <i class="fa-solid fa-file-upload"></i> Importa GPX
-        </button>
-        <div class="week-nav">
-          <button class="btn" onclick="changeWeek(-1)"><i class="fa-solid fa-chevron-left"></i> Prec.</button>
-          <span id="week-range-label">Settimana Corrente</span>
-          <button class="btn" onclick="changeWeek(1)">Succ. <i class="fa-solid fa-chevron-right"></i></button>
+    <header class="app-header">
+        <div class="user-selector">
+            <select id="user-select" onchange="switchUser(this.value)">
+                <option value="Maria">Maria</option>
+                <option value="Magrela">Magrela</option>
+            </select>
         </div>
-      </div>
+        <button class="btn-action-cta btn-add-green" title="Nuovo Allenamento" onclick="openPlanModal()"><i class="fa-solid fa-plus"></i></button>
     </header>
 
-    <div class="calendar-bar" id="calendar-bar"></div>
-
-    <div class="grid-cards">
-      <div class="card">
-        <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-route"></i> Distanza Totale</span></div>
-        <div class="kpi-value" id="kpi-dist">0.00 km</div>
-      </div>
-      
-      <div class="card">
-        <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-calendar-day"></i> Allenamento Oggi</span></div>
-        <div class="kpi-value" id="today-reminder-title">--</div>
-        <div class="kpi-subtext" id="today-reminder-detail">Caricamento...</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-calendar-plus"></i> In Programma Domani</span></div>
-        <div class="kpi-value" id="tomorrow-reminder-title">--</div>
-        <div class="kpi-subtext" id="tomorrow-reminder-detail">Nessuna sessione</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-bolt"></i> Sessioni Svolte</span></div>
-        <div class="kpi-value kpi-green" id="kpi-count">0</div>
-      </div>
-    </div>
-
-    <div class="grid-cards">
-      <div class="card">
-        <div class="card-title" id="selected-day-label"><span class="card-title-text"><i class="fa-solid fa-calendar-day"></i> Programma Corsa</span></div>
-        <h2 id="day-title">Nessun allenamento</h2>
-        <p class="day-info">Distanza: <strong id="day-dist">-- km</strong> | Ritmo: <strong id="day-pace">-- min/km</strong></p>
-        <p class="day-info">Cardio / Zona: <strong id="day-zone">--</strong></p>
-        <div id="day-extra-details"></div>
-        <div id="day-notes-detail"></div>
-        <span id="day-badge" class="badge z-rest">Non Impostato</span>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-clock-rotate-left"></i> Riferimento Settimana Scorsa</span></div>
-        <div id="prev-week-summary">
-          <em>Nessun dato registrato la settimana scorsa.</em>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-cards">
-      <div class="card">
-        <div class="card-title" id="form-card-title"><span class="card-title-text"><i class="fa-solid fa-pen-to-square"></i> Pianifica Corsa</span></div>
-        <input type="hidden" id="editing-id" value="">
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Data</label>
-            <input type="date" id="p-date">
-          </div>
-          <div class="form-group">
-            <label>Categoria / Tipo</label>
-            <select id="p-category" onchange="handleCategoryChange(this.value)">
-              <option value="PERSONALIZZATO">Personalizzato / Libero</option>
-              <option value="LENTO">Corsa Lenta / Rigenerante</option>
-              <option value="MEDIO">Corsa Media</option>
-              <option value="PROGRESSIVO">Progressivo</option>
-              <option value="INTERVALS">Ripetute / Step Multipli</option>
-              <option value="FARTLEK">Fartlek</option>
-              <option value="LUNGO">Lungo / Lunghissimo</option>
-              <option value="REST">Giorno di Riposo</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Titolo Allenamento</label>
-          <input type="text" id="p-title" placeholder="Es. Riscaldamento + Ripetute 10x300m...">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Distanza Totale (km)</label>
-            <input type="number" step="0.1" id="p-dist" placeholder="10">
-          </div>
-          <div class="form-group">
-            <label>Ritmo Medio / Target</label>
-            <input type="text" id="p-pace" placeholder="5:00">
-          </div>
-        </div>
-
-        <div class="steps-container">
-          <div class="step-header">
-            <label><i class="fa-solid fa-list-check"></i> Step Allenamento</label>
-            <div class="step-actions">
-              <select id="step-preset-select" onchange="addPresetStep(this.value); this.value='';">
-                <option value="">+ Suggerimento...</option>
-                <option value="Riscaldamento 2km @ 6:00">Riscaldamento 2km @ 6:00</option>
-                <option value="10x 300m (Rec. 90s)">10x 300m (Rec. 90s)</option>
-                <option value="1km @ 5:30">1km @ 5:30</option>
-                <option value="Defaticamento 2km @ 6:00">Defaticamento 2km @ 6:00</option>
-              </select>
-              <button class="btn-cta-small" onclick="addEmptyStep()"><i class="fa-solid fa-plus"></i> Custom</button>
+    <main class="app-content">
+        <!-- TAB 1: ALLENAMENTI -->
+        <section id="tab-workouts" class="tab-page active">
+            <div class="top-stats-card">
+                <div class="ring-container">
+                    <svg class="progress-ring" width="80" height="80">
+                        <circle class="progress-ring__circle-bg" stroke="#333342" stroke-width="6" fill="transparent" r="32" cx="40" cy="40"/>
+                        <circle id="goal-progress-ring" class="progress-ring__circle" stroke="#ff79c6" stroke-width="6" fill="transparent" r="32" cx="40" cy="40"/>
+                    </svg>
+                    <div class="ring-text">
+                        <small>Meta Settimanale</small>
+                        <span id="goal-km-display" class="ring-val">0.0 / 0.0 km</span>
+                    </div>
+                </div>
+                <div class="race-countdown">
+                    <small>Prossimo Obiettivo</small>
+                    <strong id="countdown-val">Nessun obiettivo</strong>
+                </div>
             </div>
-          </div>
-          <div id="steps-list"></div>
+
+            <div class="month-selector">
+                <button class="nav-arrow" onclick="changeWeek(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="current-month-label">Ottobre, 2026</span>
+                <button class="nav-arrow" onclick="changeWeek(1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <div class="week-pills-container" id="week-calendar-bar"></div>
+
+            <div class="selected-date-header">
+                <span id="selected-day-full-date">mercoledì, 7 ottobre</span>
+            </div>
+
+            <div class="workout-card-container">
+                <div id="day-workout-details"></div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PACE CALCULATOR -->
+        <section id="tab-calculator" class="tab-page">
+            <div class="page-title-box">
+                <h2>Calcolatrice Ritmo</h2>
+                <p>Inserisci Distanza e Tempo per scoprire il tuo Passo</p>
+            </div>
+
+            <div class="calc-form-card">
+                <div class="input-group">
+                    <label><i class="fa-solid fa-ruler-horizontal"></i> Distanza (Km)</label>
+                    <input type="number" id="calc-dist" placeholder="es. 10.00" step="0.01">
+                </div>
+
+                <div class="input-group">
+                    <label><i class="fa-solid fa-stopwatch"></i> Tempo (es. 50 oppure 00:50:00)</label>
+                    <input type="text" id="calc-time" placeholder="es. 50">
+                </div>
+
+                <div class="calc-result-box">
+                    <span class="res-title">Risultato Calcolato</span>
+                    <div class="res-grid">
+                        <div class="res-item">
+                            <small>Distanza</small>
+                            <strong id="res-dist-display">-- KM</strong>
+                        </div>
+                        <div class="res-item">
+                            <small>Tempo</small>
+                            <strong id="res-time-display">--:--</strong>
+                        </div>
+                        <div class="res-item highlight">
+                            <small>Ritmo / Pace</small>
+                            <strong id="calc-pace-output">0:00 min/km</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calc-actions">
+                    <button class="btn-action-cta btn-add-green" onclick="calculatePace()"><i class="fa-solid fa-calculator"></i> Calcola Pace</button>
+                    <button class="btn-action-cta btn-reset-yellow" onclick="resetCalculator()"><i class="fa-solid fa-rotate-left"></i> Azzera</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: RECAP & CONFRONTO -->
+        <section id="tab-recap" class="tab-page">
+            <div class="page-title-box">
+                <h2>Recap & Confronto</h2>
+                <p>Storico allenamenti eseguiti e confronto pianificazione</p>
+            </div>
+
+            <div class="recap-card">
+                <h3>Settimana Visualizzata</h3>
+                <div class="recap-metrics-grid">
+                    <div class="metric-box">
+                        <small>Pianificati</small>
+                        <strong id="recap-planned-km" style="color:var(--pink)">0 km</strong>
+                    </div>
+                    <div class="metric-box">
+                        <small>Eseguiti GPX</small>
+                        <strong id="recap-executed-km" style="color:var(--green)">0 km</strong>
+                    </div>
+                    <div class="metric-box">
+                        <small>Sessioni</small>
+                        <strong id="recap-sessions-count">0 / 0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="past-history-card">
+                <h3>Corse Recenti Importate (GPX)</h3>
+                <div id="past-imported-list"></div>
+            </div>
+        </section>
+
+        <!-- TAB 4: PROFILO -->
+        <section id="tab-profile" class="tab-page">
+            <div class="page-title-box">
+                <h2>Profilo Atleta</h2>
+            </div>
+            <div class="profile-card">
+                <p>Atleta attivo: <strong id="active-user-name" style="color: var(--pink)">Maria</strong></p>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL PIANIFICAZIONE ALLENAMENTO -->
+    <div id="plan-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePlanModal()">&times;</span>
+            <h3 id="modal-plan-title">Gestione Allenamento</h3>
+            
+            <form id="plan-form" onsubmit="savePlannedWorkout(event)">
+                <input type="hidden" id="plan-id">
+                
+                <label>Data</label>
+                <input type="date" id="plan-date" required>
+
+                <label>Modelli Preimpostati / Tipo di Corsa</label>
+                <select id="workout-template-select" onchange="handleTemplateSelect(this.value)">
+                    <option value="">-- Seleziona un modello o inserisci a mano --</option>
+                    <option value="fondo_lento">Fondo Lento 50'</option>
+                    <option value="lungo">Lungo 95' Finale MM</option>
+                    <option value="rip_brevi">Ripetute Brevi – 10 × 400 M</option>
+                    <option value="rip_lunghe">Ripetute Lunghe – 5 × 1000 M</option>
+                    <option value="tempo_run">Tempo Run (Soglia) – 3 × 10'</option>
+                    <option value="fartlek">Fartlek – 10 × (1' + 1')</option>
+                    <option value="salita">Ripetute In Salita – 8 × 75"</option>
+                    <option value="CUSTOM">+ Inserisci personalizzato...</option>
+                </select>
+
+                <label>Titolo / Nome Allenamento</label>
+                <input type="text" id="plan-title" placeholder="Es. Fondo Lento 50'" required>
+
+                <!-- CONTENITORE BLOCCHI ATTIVI (Appaiono in real-time quando clicchi la pillola sotto) -->
+                <div class="optional-fields-box">
+                    <span style="color:var(--orange); font-weight:bold; font-size:0.8rem; margin-bottom:4px; display:block; text-transform:uppercase;">Struttura dell'Allenamento</span>
+                    <div id="active-builder-blocks">
+                        <!-- Qui compaiono i blocchi attivi con il loro input e tasto rosso - -->
+                    </div>
+
+                    <!-- PILLOLE VERDI PER AGGIUNGERE IN REAL-TIME -->
+                    <div style="margin-top: 10px;">
+                        <div class="add-pills-grid">
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Riscaldamento', 'Tempo 10:00')">+ Riscaldamento</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Corsa / Lavoro', 'Tempo 30:00')">+ Corsa / Lavoro</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Recupero', 'Tempo 2:00')">+ Recupero</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Ripetizioni', '10 x 400m')">+ Ripetizioni</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Riposo', 'Fermo 1:00')">+ Riposo</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Defaticamento', 'Tempo 5:00')">+ Defaticamento</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Pace', '4:40-4:50 /km')">+ Pace</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('ZF – Zona frequenza', 'Zona 2')">+ ZF – Zona frequenza</button>
+                        </div>
+                    </div>
+                </div>
+
+                <label>Note e Consigli</label>
+                <textarea id="plan-notes" placeholder="Note per questo allenamento..."></textarea>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-action-cta btn-add-green" style="width:100%;">Salva Allenamento</button>
+                    <button type="button" id="btn-delete-plan" class="btn-action-cta btn-delete-red" style="display:none;" onclick="deletePlannedWorkout()">Elimina</button>
+                </div>
+            </form>
         </div>
-
-        <div class="form-group">
-          <label>Zona Cardio Target</label>
-          <select id="p-zone">
-            <option value="Z1 - Rigenerante">Z1 - Rigenerante</option>
-            <option value="Z2 - Fondo Lento">Z2 - Fondo Lento</option>
-            <option value="Z3 - Tempo Run / Medio">Z3 - Tempo Run / Medio</option>
-            <option value="Z4 - Soglia Anaerobica">Z4 - Soglia Anaerobica</option>
-            <option value="Z5 - Massimale">Z5 - Massimale</option>
-            <option value="REST">REST - Riposo</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Note Personali</label>
-          <textarea id="p-notes" rows="2" placeholder="Es. Buone sensazioni..."></textarea>
-        </div>
-
-        <button class="btn btn-primary full-width" id="btn-save-plan" onclick="scheduleWorkout()">Salva In Programma</button>
-      </div>
-
-      <div class="card flex-column-between">
-        <div>
-          <div class="card-title"><span class="card-title-text"><i class="fa-solid fa-chart-line"></i> Recap Settimana Corrente</span></div>
-          <div id="recap-current-week">
-            <div class="recap-km purple" id="cw-km">0.0 km</div>
-            <div class="recap-details" id="cw-details">0 sessioni svolte</div>
-          </div>
-
-          <div class="card-title border-top">
-            <span class="card-title-text"><i class="fa-solid fa-chart-pie"></i> Recap Settimana Precedente</span>
-          </div>
-          <div id="recap-prev-week">
-            <div class="recap-km orange" id="pw-km">0.0 km</div>
-            <div class="recap-details" id="pw-details">0 sessioni svolte</div>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">
-        <span class="card-title-text"><i class="fa-solid fa-calendar-check"></i> Allenamenti Pianificati</span>
-        <select class="table-filter-select" id="plan-filter" onchange="renderPlannedTable()">
-          <option value="ALL">Tutte le date</option>
-          <option value="THIS_WEEK">Questa Settimana</option>
-          <option value="PREV_WEEK">Settimana Scorsa</option>
-        </select>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" onclick="toggleSelectGroup('plan', this)"></th>
-              <th>Data</th>
-              <th>Titolo</th>
-              <th>Note</th>
-              <th>Km</th>
-              <th>Ritmo</th>
-              <th>Stato</th>
-              <th class="text-center">Azioni</th>
-            </tr>
-          </thead>
-          <tbody id="planned-history"></tbody>
-        </table>
-      </div>
+    <!-- MODAL IMPORTAZIONE GPX / RISULTATO E STATO -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeUploadModal()">&times;</span>
+            <h3>Registra Risultato & Stato Esecuzione</h3>
+            
+            <div class="gpx-drop-zone">
+                <i class="fa-solid fa-file-code" style="font-size:2rem; color:var(--pink);"></i>
+                <p>Seleziona o trascina il file GPX della tua corsa</p>
+                <input type="file" id="gpx-file-input" accept=".gpx" onchange="parseGPXFile(event)">
+            </div>
+
+            <form id="execution-form" onsubmit="saveExecutionWorkout(event)" style="margin-top:15px;">
+                <input type="hidden" id="exec-plan-id">
+                <label>Data Esecuzione / Sposta a domani</label>
+                <input type="date" id="exec-date" required>
+                
+                <label>Stato Esecuzione</label>
+                <select id="exec-status">
+                    <option value="done">✅ Fatto (Verde)</option>
+                    <option value="to-fix">❌ Non fatto / Saltato (Rosso)</option>
+                    <option value="in-progress">🔄 Spostato / Rimandato (Blu)</option>
+                </select>
+
+                <label>Titolo Corsa</label>
+                <input type="text" id="exec-title" required>
+                <label>Distanza (km)</label>
+                <input type="number" step="0.01" id="exec-dist" required>
+                <label>Zona Cardio</label>
+                <select id="exec-hr">
+                    <option value="Z1">Z1 - Recupero</option>
+                    <option value="Z2" selected>Z2 - Aerobico Lento</option>
+                    <option value="Z3">Z3 - Tempo</option>
+                    <option value="Z4">Z4 - Intenso</option>
+                    <option value="Z5">Z5 - Max</option>
+                </select>
+                <label>Note Corsa</label>
+                <textarea id="exec-notes" placeholder="Sensazioni, meteo..."></textarea>
+                <button type="submit" class="btn-action-cta btn-add-green" style="width:100%;">Registra Esecuzione</button>
+            </form>
+        </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">
-        <span class="card-title-text"><i class="fa-solid fa-satellite-dish"></i> Attività Reali GPX</span>
-        <select class="table-filter-select" id="gpx-filter" onchange="renderImportedTable()">
-          <option value="ALL">Tutte le date</option>
-          <option value="THIS_WEEK">Questa Settimana</option>
-          <option value="PREV_WEEK">Settimana Scorsa</option>
-        </select>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" onclick="toggleSelectGroup('gpx', this)"></th>
-              <th>Data e Ora</th>
-              <th>Nome Attività</th>
-              <th>Distanza</th>
-              <th>Tempo</th>
-              <th>Ritmo</th>
-              <th>Cardio</th>
-            </tr>
-          </thead>
-          <tbody id="imported-history"></tbody>
-        </table>
-      </div>
-    </div>
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('workouts', this)">
+            <i class="fa-solid fa-person-running"></i>
+            <span>Allenamenti</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('calculator', this)">
+            <i class="fa-solid fa-calculator"></i>
+            <span>Pace</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('recap', this)">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Recap</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('profile', this)">
+            <i class="fa-solid fa-user"></i>
+            <span>Profilo</span>
+        </button>
+    </nav>
 
-  </div>
-
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
