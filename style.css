@@ -1,516 +1,381 @@
-const SUPABASE_URL = 'https://hakwysrhwddqqgernlxk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Drp2V_Sb-IHHxoMOPeetBQ_rXPwFQ93';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let currentUser = 'Maria';
-
-const templatesData = {
-    fondo_lento: {
-        title: "Fondo Lento 50'",
-        fields: { "Riscaldamento": "Tempo 5:00", "Corsa / Lavoro": "Tempo 40:00", "ZF – Zona frequenza": "Zona 2", "Defaticamento": "Tempo 5:00" },
-        notes: "Costruisce la base aerobica e ti fa recuperare dalle sedute dure."
-    },
-    lungo: {
-        title: "Lungo 95' Finale MM",
-        fields: { "Riscaldamento": "Tempo 10:00", "Corsa / Lavoro": "Tempo 65:00", "ZF – Zona frequenza": "Zona 2", "Ripetizioni": "Tempo 15:00", "Pace": "5:15–5:25 /km", "Defaticamento": "Tempo 5:00" },
-        notes: "Insegna al corpo a usare i grassi ed evita il muro."
-    },
-    rip_brevi: {
-        title: "Ripetute Brevi – 10 × 400 M",
-        fields: { "Riscaldamento": "Tempo 15:00", "Ripetizioni": "10 × 400 m", "Corsa / Lavoro": "Distanza 400m", "Pace": "4:40–4:50 /km", "Recupero": "Tempo 1:30", "Defaticamento": "Tempo 10:00" },
-        notes: "Aumenta il VO2max e la velocità di punta."
-    },
-    rip_lunghe: {
-        title: "Ripetute Lunghe – 5 × 1000 M",
-        fields: { "Riscaldamento": "Tempo 15:00", "Ripetizioni": "5 × 1000 m", "Corsa / Lavoro": "Distanza 1 km", "Pace": "4:55–5:05 /km", "Recupero": "Tempo 2:00", "Defaticamento": "Tempo 10:00" },
-        notes: "Allenamento specifico per 10 km e mezza maratona."
-    },
-    tempo_run: {
-        title: "Tempo Run (Soglia) – 3 × 10'",
-        fields: { "Riscaldamento": "Tempo 15:00", "Ripetizioni": "3 × 10'", "Corsa / Lavoro": "Tempo 10:00", "Pace": "5:05–5:10 /km", "Recupero": "Tempo 2:00", "Defaticamento": "Tempo 10:00" },
-        notes: "Alza la soglia anaerobica."
-    },
-    fartlek: {
-        title: "Fartlek – 10 × (1' + 1')",
-        fields: { "Riscaldamento": "Tempo 15:00", "Ripetizioni": "10 × (1' + 1')", "Corsa / Lavoro": "Tempo 1:00", "Recupero": "Tempo 1:00", "Defaticamento": "Tempo 10:00" },
-        notes: "Allena i cambi di ritmo e il recupero in corsa."
-    },
-    salita: {
-        title: "Ripetute In Salita – 8 × 75\"",
-        fields: { "Riscaldamento": "Tempo 15:00", "Ripetizioni": "8 × 75\"", "Corsa / Lavoro": "Tempo 1:15", "Defaticamento": "Tempo 10:00" },
-        notes: "Forza specifica per glutei e polpacci."
-    }
-};
-
-let allPlannedWorkouts = [];
-let allImportedWorkouts = [];
-
-let currentWeekOffset = 0;
-let selectedDateStr = new Date().toISOString().split('T')[0];
-
-window.onload = async function() {
-    await fetchAllData();
-};
-
-async function fetchAllData() {
-    const { data: planned } = await supabaseClient.from('planned_workouts').select('*');
-    const { data: imported } = await supabaseClient.from('imported_workouts').select('*');
-    
-    allPlannedWorkouts = planned || [];
-    allImportedWorkouts = imported || [];
-    
-    if (allPlannedWorkouts.length === 0) {
-        await seedDefaultWorkouts();
-    } else {
-        renderApp();
-    }
+:root {
+    --bg-dark: #121214;
+    --card-bg: #1e1e24;
+    --card-inner: #282836;
+    --pink: #ff79c6;
+    --orange: #ffb86c;
+    --green: #00e676;
+    --red: #ff5555;
+    --cyan: #8be9fd;
+    --blue: #61afef;
+    --text-white: #ffffff;
+    --text-muted: #a0a0b0;
+    --border-color: #333342;
 }
 
-async function seedDefaultWorkouts() {
-    const startOfWeek = getStartOfWeek(0);
-    const keys = Object.keys(templatesData);
-    
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(startOfWeek);
-        d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        const templateKey = keys[i % keys.length];
-        const t = templatesData[templateKey];
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-        const payload = {
-            user_id: 'Maria',
-            date: dateStr,
-            workout_type: t.title,
-            title: t.title,
-            custom_fields: t.fields,
-            notes: t.notes
-        };
-        await supabaseClient.from('planned_workouts').insert([payload]);
-    }
-
-    const { data: planned } = await supabaseClient.from('planned_workouts').select('*');
-    allPlannedWorkouts = planned || [];
-    renderApp();
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    padding-bottom: 85px;
+    max-width: 480px;
+    margin: 0 auto;
 }
 
-function switchUser(newUser) {
-    currentUser = newUser;
-    renderApp();
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
 }
 
-function switchTab(tabName, btn) {
-    document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    
-    document.getElementById('tab-' + tabName).classList.add('active');
-    btn.classList.add('active');
+/* STILE UNIFORME PER TUTTI I SELECT / DROPDOWN (Sfondo scuro pulito senza blu nativo) */
+select {
+    background-color: var(--card-inner) !important;
+    color: var(--text-white) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23a0a0b0' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    cursor: pointer;
+    width: 100%;
 }
 
-function changeWeek(direction) {
-    currentWeekOffset += direction;
-    renderApp();
+select option {
+    background-color: var(--card-bg);
+    color: var(--text-white);
+    padding: 10px;
 }
 
-function getStartOfWeek(offset = 0) {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setDate(monday.getDate() + (offset * 7));
-    return monday;
+.user-selector select {
+    border: 1px solid var(--pink) !important;
+    font-weight: bold;
+    width: auto;
 }
 
-function renderApp() {
-    const startOfWeek = getStartOfWeek(currentWeekOffset);
-    const datesOfWeek = [];
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(startOfWeek);
-        date.setDate(date.getDate() + i);
-        datesOfWeek.push(date.toISOString().split('T')[0]);
-    }
-
-    const userPlanned = allPlannedWorkouts.filter(w => w.user_id === currentUser);
-    const userImported = allImportedWorkouts.filter(w => w.user_id === currentUser);
-
-    renderWeekCalendarPills(datesOfWeek);
-    renderDayDetails(selectedDateStr, userPlanned, userImported);
-    updateWeeklyStats(datesOfWeek, userPlanned, userImported);
-    renderRecapTab(datesOfWeek, userPlanned, userImported);
+/* CTA E BOTTONI UNIFORMI */
+.btn-action-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    border: 1px solid transparent;
+    cursor: pointer;
+    gap: 8px;
+    transition: all 0.2s;
 }
 
-function renderWeekCalendarPills(datesOfWeek) {
-    const bar = document.getElementById('week-calendar-bar');
-    if (!bar) return;
-
-    const daysName = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
-    let html = '';
-
-    datesOfWeek.forEach((dateStr, idx) => {
-        const isSelected = dateStr === selectedDateStr;
-        const hasImported = allImportedWorkouts.some(w => w.user_id === currentUser && w.date === dateStr);
-        const dayNum = dateStr.split('-')[2];
-
-        html += `
-            <div class="day-pill-square ${isSelected ? 'active' : ''}" onclick="selectDate('${dateStr}')">
-                <span class="day-name">${daysName[idx]}</span>
-                <span class="day-num">${dayNum}</span>
-                ${hasImported ? '<i class="fa-solid fa-circle-check check-icon"></i>' : ''}
-            </div>
-        `;
-    });
-
-    bar.innerHTML = html;
-
-    const firstDate = new Date(datesOfWeek[0]);
-    const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-    document.getElementById('current-month-label').innerText = `${monthNames[firstDate.getMonth()]}, ${firstDate.getFullYear()}`;
-    
-    const selDateObj = new Date(selectedDateStr);
-    const options = { weekday: 'long', day: 'numeric', month: 'long' };
-    document.getElementById('selected-day-full-date').innerText = selDateObj.toLocaleDateString('it-IT', options);
+.btn-add-green {
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+    border-color: rgba(0, 230, 118, 0.3);
 }
 
-function selectDate(dateStr) {
-    selectedDateStr = dateStr;
-    renderApp();
+.btn-reset-yellow {
+    background: rgba(255, 184, 108, 0.15);
+    color: #ffb86c;
+    border-color: rgba(255, 184, 108, 0.3);
+    flex: 1;
 }
 
-function renderDayDetails(dateStr, planned, imported) {
-    const container = document.getElementById('day-workout-details');
-    const dayPlanned = planned.filter(w => w.date === dateStr);
-    const dayImported = imported.filter(w => w.date === dateStr);
-
-    let html = '';
-
-    if (dayImported.length > 0) {
-        dayImported.forEach(imp => {
-            const statusClass = imp.status === 'to-fix' ? 'tag-to-fix' : (imp.status === 'in-progress' ? 'tag-in-progress' : 'tag-done');
-            const statusLabel = imp.status === 'to-fix' ? 'non fatto' : (imp.status === 'in-progress' ? 'spostato' : 'fatto');
-            html += `
-                <div class="main-workout-card" style="border-color: var(--green);">
-                    <div class="workout-type-header" style="color: var(--green);">
-                        <span><i class="fa-solid fa-circle-check"></i> Esecuzione Registrata</span>
-                        <span class="tag-pill ${statusClass}">${statusLabel}</span>
-                    </div>
-                    <div class="workout-inner-box">
-                        <strong>${imp.dist} km - ${imp.hr_zone || 'Z2'}</strong>
-                    </div>
-                    <p style="font-weight:bold; margin-bottom:5px;">${imp.title}</p>
-                    ${imp.notes ? `<div class="workout-notes-box">📝 Note: ${imp.notes}</div>` : ''}
-                    <button class="btn-full-workout" onclick="deleteImportedWorkout('${imp.id}')">Elimina Esecuzione</button>
-                </div>
-            `;
-        });
-    }
-
-    if (dayPlanned.length > 0) {
-        dayPlanned.forEach(p => {
-            let fieldsHtml = '';
-            if (p.custom_fields) {
-                for (const [k, v] of Object.entries(p.custom_fields)) {
-                    fieldsHtml += `<div style="font-size:0.85rem; margin-bottom:4px; display:flex; justify-content:space-between;"><strong>${k}:</strong> <span>${v}</span></div>`;
-                }
-            }
-
-            html += `
-                <div class="main-workout-card">
-                    <div class="workout-type-header">
-                        <span><i class="fa-solid fa-person-running"></i> ${p.workout_type || 'Corsa'}</span>
-                    </div>
-                    
-                    <div class="workout-inner-box">
-                        <div style="font-weight:bold; font-size:1.05rem; margin-bottom:6px; color:#121214;">${p.title}</div>
-                        ${fieldsHtml}
-                    </div>
-
-                    ${p.notes ? `<div class="workout-notes-box">📝 ${p.notes}</div>` : ''}
-
-                    <button class="btn-full-workout" onclick="openPlanModal('${p.id}')">Modifica Allenamento →</button>
-                    <button class="btn-full-workout" style="margin-top:5px; border-color:var(--green); color:var(--green);" onclick="openUploadModal('${p.id}', '${p.title}')">+ Inserisci Risultato / GPX / Stato</button>
-                </div>
-            `;
-        });
-    }
-
-    if (dayPlanned.length === 0 && dayImported.length === 0) {
-        html = `
-            <div style="text-align:center; padding:30px 10px;">
-                <p style="color:var(--text-muted); margin-bottom:15px;">Nessun allenamento programmato per questa data.</p>
-                <button class="btn-action-cta btn-add-green" onclick="openPlanModal()">+ Aggiungi Allenamento</button>
-            </div>
-        `;
-    }
-
-    container.innerHTML = html;
+.btn-delete-red {
+    background: rgba(255, 85, 85, 0.15);
+    color: #ff5555;
+    border-color: rgba(255, 85, 85, 0.3);
 }
 
-function updateWeeklyStats(datesOfWeek, planned, imported) {
-    const weekImported = imported.filter(w => datesOfWeek.includes(w.date));
-    const totalKmDone = weekImported.reduce((sum, w) => sum + (parseFloat(w.dist) || 0), 0);
-    const weekPlanned = planned.filter(w => datesOfWeek.includes(w.date));
-    
-    const dynamicTarget = weekPlanned.length > 0 ? (weekPlanned.length * 8.0) : 30;
-
-    document.getElementById('goal-km-display').innerText = `${totalKmDone.toFixed(1)} / ${dynamicTarget.toFixed(1)} km`;
-
-    const ring = document.getElementById('goal-progress-ring');
-    if (ring) {
-        const circumference = 2 * Math.PI * 32;
-        const percent = Math.min(totalKmDone / dynamicTarget, 1);
-        const offset = circumference - (percent * circumference);
-        ring.style.strokeDasharray = `${circumference} ${circumference}`;
-        ring.style.strokeDashoffset = offset;
-    }
-
-    const countdownEl = document.getElementById('countdown-val');
-    if (weekPlanned.length > 0) {
-        countdownEl.innerText = weekPlanned[0].title;
-    } else {
-        countdownEl.innerText = "Nessun obiettivo";
-    }
+/* GRIGLIA PILLOLE AGGIUNTA RAPIDA (Stile Screenshot) */
+.add-pills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
-function renderRecapTab(datesOfWeek, planned, imported) {
-    const weekImported = imported.filter(w => datesOfWeek.includes(w.date));
-    const weekPlanned = planned.filter(w => datesOfWeek.includes(w.date));
-    const totalExecuted = weekImported.reduce((sum, w) => sum + (parseFloat(w.dist) || 0), 0);
-
-    document.getElementById('recap-planned-km').innerText = `${weekPlanned.length} sessioni`;
-    document.getElementById('recap-executed-km').innerText = `${totalExecuted.toFixed(1)} km`;
-    document.getElementById('recap-sessions-count').innerText = `${weekImported.length} / ${weekPlanned.length}`;
-
-    const pastContainer = document.getElementById('past-imported-list');
-    if (imported.length > 0) {
-        let html = '';
-        imported.forEach(imp => {
-            html += `
-                <div style="background:var(--card-inner); padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border-color);">
-                    <div>
-                        <strong>🏃 ${imp.title}</strong>
-                        <small style="display:block; color:var(--text-muted);">${imp.date}</small>
-                    </div>
-                    <span style="color:var(--green); font-weight:bold;">${imp.dist} km</span>
-                </div>
-            `;
-        });
-        pastContainer.innerHTML = html;
-    } else {
-        pastContainer.innerHTML = '<p style="color:var(--text-muted)">Nessuna corsa salvata nello storico.</p>';
-    }
+.btn-add-pill {
+    background: rgba(0, 230, 118, 0.1);
+    color: var(--green);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    padding: 6px 10px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-// GESTIONE COSTRUTTORE COMPATTO IN REAL-TIME
-function renderBuilder(fields = {}) {
-    const container = document.getElementById('active-builder-blocks');
-    container.innerHTML = '';
-
-    for (const [key, val] of Object.entries(fields)) {
-        appendBuilderRow(key, val);
-    }
+.btn-add-pill:hover {
+    background: rgba(0, 230, 118, 0.25);
 }
 
-function addBuilderBlock(keyName, defaultVal = '') {
-    appendBuilderRow(keyName, defaultVal);
+/* BLOCCHI ATTIVI NEL COSTRUTTORE */
+.builder-active-row {
+    background: var(--card-inner);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-function appendBuilderRow(keyName, val) {
-    const container = document.getElementById('active-builder-blocks');
-    const div = document.createElement('div');
-    div.className = 'builder-active-row';
-    div.innerHTML = `
-        <span class="builder-active-label">${keyName}</span>
-        <input type="text" class="builder-active-input" data-key="${keyName}" value="${val}" placeholder="Valore...">
-        <button type="button" class="btn-circle-red" onclick="this.parentElement.remove()"><i class="fa-solid fa-minus"></i></button>
-    `;
-    container.appendChild(div);
+.builder-active-label {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--pink);
+    min-width: 110px;
 }
 
-function handleTemplateSelect(val) {
-    if (!val || val === 'CUSTOM') return;
-    const t = templatesData[val];
-    if (!t) return;
-
-    document.getElementById('plan-title').value = t.title;
-    document.getElementById('plan-notes').value = t.notes || '';
-    renderBuilder(t.fields);
+.builder-active-input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    flex: 1;
 }
 
-// CALCOLATRICE PACE
-function calculatePace() {
-    const distInput = document.getElementById('calc-dist').value.trim();
-    const timeInput = document.getElementById('calc-time').value.trim();
-    
-    const dist = parseFloat(distInput);
-    if (!dist || dist <= 0 || !timeInput) return;
-
-    let seconds = 0;
-    if (timeInput.includes(':')) {
-        const parts = timeInput.split(':').map(Number);
-        if (parts.length === 3) seconds = parts[0]*3600 + parts[1]*60 + parts[2];
-        else if (parts.length === 2) seconds = parts[0]*60 + parts[1];
-    } else {
-        seconds = parseFloat(timeInput) * 60;
-    }
-
-    if (isNaN(seconds) || seconds <= 0) return;
-
-    const secPerKm = seconds / dist;
-    const min = Math.floor(secPerKm / 60);
-    const sec = Math.round(secPerKm % 60);
-    const paceStr = `${min}:${sec < 10 ? '0' : ''}${sec} min/km`;
-
-    document.getElementById('res-dist-display').innerText = `${dist.toFixed(2)} KM`;
-    document.getElementById('res-time-display').innerText = timeInput.includes(':') ? timeInput : `${timeInput}:00`;
-    document.getElementById('calc-pace-output').innerText = paceStr;
+.btn-circle-red {
+    background: rgba(255, 85, 85, 0.15);
+    color: #ff5555;
+    border: 1px solid rgba(255, 85, 85, 0.3);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    cursor: pointer;
+    flex-shrink: 0;
 }
 
-function resetCalculator() {
-    document.getElementById('calc-dist').value = '';
-    document.getElementById('calc-time').value = '';
-    document.getElementById('res-dist-display').innerText = '-- KM';
-    document.getElementById('res-time-display').innerText = '--:--';
-    document.getElementById('calc-pace-output').innerText = '0:00 min/km';
+/* BADGE STATUS A PILLOLA */
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 1px solid transparent;
+}
+.tag-done { background: rgba(0, 230, 118, 0.15); color: #00e676; border-color: rgba(0, 230, 118, 0.3); }
+.tag-to-fix { background: rgba(255, 85, 85, 0.15); color: #ff5555; border-color: rgba(255, 85, 85, 0.3); }
+.tag-in-progress { background: rgba(97, 175, 239, 0.15); color: #61afef; border-color: rgba(97, 175, 239, 0.3); }
+
+.app-content { padding: 0 16px; }
+.tab-page { display: none; }
+.tab-page.active { display: block; }
+
+.page-title-box { margin-bottom: 15px; }
+.page-title-box h2 { font-size: 1.3rem; color: var(--pink); }
+.page-title-box p { font-size: 0.85rem; color: var(--text-muted); }
+
+/* TOP STATS CARD */
+.top-stats-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    border: 1px solid var(--border-color);
+}
+.ring-container { display: flex; align-items: center; gap: 12px; }
+.ring-text { display: flex; flex-direction: column; }
+.ring-text small { color: var(--text-muted); font-size: 0.75rem; }
+.ring-val { font-weight: bold; font-size: 1.1rem; color: var(--pink); }
+.race-countdown { text-align: right; }
+.race-countdown small { color: var(--text-muted); font-size: 0.75rem; display: block; }
+.race-countdown strong { color: var(--orange); font-size: 0.95rem; }
+
+/* MONTH SELECTOR */
+.month-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.nav-arrow { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+#current-month-label { font-weight: bold; font-size: 1.05rem; }
+
+/* CALENDARIO QUADRATINI */
+.week-pills-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 12px;
 }
 
-function openPlanModal(id = null) {
-    document.getElementById('plan-modal').style.display = 'block';
-    document.getElementById('btn-delete-plan').style.display = id ? 'inline-block' : 'none';
-
-    if (id) {
-        document.getElementById('modal-plan-title').innerText = "Modifica Allenamento";
-        const item = allPlannedWorkouts.find(w => w.id == id);
-        if (item) {
-            document.getElementById('plan-id').value = item.id;
-            document.getElementById('plan-date').value = item.date || selectedDateStr;
-            document.getElementById('plan-title').value = item.title || '';
-            document.getElementById('plan-notes').value = item.notes || '';
-            renderBuilder(item.custom_fields || {});
-        }
-    } else {
-        document.getElementById('modal-plan-title').innerText = "Nuovo Allenamento";
-        document.getElementById('plan-form').reset();
-        document.getElementById('plan-id').value = '';
-        document.getElementById('plan-date').value = selectedDateStr;
-        document.getElementById('workout-template-select').value = '';
-        renderBuilder({ "Riscaldamento": "Tempo 5:00", "Corsa / Lavoro": "Tempo 30:00" });
-    }
+.day-pill-square {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    width: 52px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-function closePlanModal() { document.getElementById('plan-modal').style.display = 'none'; }
-
-function openUploadModal(planId = null, defaultTitle = '') {
-    const modal = document.getElementById('upload-modal');
-    document.getElementById('execution-form').reset();
-    document.getElementById('exec-date').value = selectedDateStr;
-    if (defaultTitle) document.getElementById('exec-title').value = defaultTitle;
-    document.getElementById('exec-plan-id').value = planId || '';
-    modal.style.display = 'block';
+.day-pill-square.active {
+    border-color: var(--pink);
+    background: rgba(255, 121, 198, 0.12);
 }
 
-function closeUploadModal() { document.getElementById('upload-modal').style.display = 'none'; }
+.day-pill-square .day-name { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+.day-pill-square .day-num { font-size: 1rem; font-weight: bold; margin-top: 2px; }
+.day-pill-square .check-icon { color: var(--green); font-size: 0.75rem; margin-top: 2px; }
 
-function parseGPXFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
-        const trkpts = xmlDoc.getElementsByTagName("trkpt");
-        let totalDist = 0;
-
-        for (let i = 0; i < trkpts.length - 1; i++) {
-            const lat1 = parseFloat(trkpts[i].getAttribute("lat"));
-            const lon1 = parseFloat(trkpts[i].getAttribute("lon"));
-            const lat2 = parseFloat(trkpts[i + 1].getAttribute("lat"));
-            const lon2 = parseFloat(trkpts[i + 1].getAttribute("lon"));
-            totalDist += calcHaversineDistance(lat1, lon1, lat2, lon2);
-        }
-
-        const distKm = (totalDist / 1000).toFixed(2);
-        document.getElementById('exec-title').value = file.name.replace('.gpx', '');
-        document.getElementById('exec-dist').value = distKm;
-    };
-    reader.readAsText(file);
+.selected-date-header {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    text-transform: capitalize;
 }
 
-function calcHaversineDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3;
-    const r1 = lat1 * Math.PI / 180, r2 = lat2 * Math.PI / 180;
-    const dR = (lat2 - lat1) * Math.PI / 180, dL = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dR/2)*Math.sin(dR/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(dL/2)*Math.sin(dL/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+/* WORKOUT CARD DESIGN */
+.main-workout-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 12px;
 }
 
-async function savePlannedWorkout(e) {
-    e.preventDefault();
-    const id = document.getElementById('plan-id').value;
-    
-    const customFields = {};
-    document.querySelectorAll('.builder-active-row').forEach(row => {
-        const key = row.querySelector('.builder-active-label').innerText.trim();
-        const val = row.querySelector('.builder-active-input').value.trim();
-        if (key && val) customFields[key] = val;
-    });
-
-    const payload = {
-        user_id: currentUser,
-        date: document.getElementById('plan-date').value,
-        workout_type: document.getElementById('plan-title').value,
-        title: document.getElementById('plan-title').value,
-        custom_fields: customFields,
-        notes: document.getElementById('plan-notes').value.trim() || null
-    };
-
-    if (id) {
-        await supabaseClient.from('planned_workouts').update(payload).eq('id', id);
-    } else {
-        await supabaseClient.from('planned_workouts').insert([payload]);
-    }
-
-    closePlanModal();
-    await fetchAllData();
+.workout-type-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: var(--pink);
 }
 
-async function saveExecutionWorkout(e) {
-    e.preventDefault();
-    const planId = document.getElementById('exec-plan-id').value;
-    const newDate = document.getElementById('exec-date').value;
-    const status = document.getElementById('exec-status').value;
-
-    const payload = {
-        user_id: currentUser,
-        date: newDate,
-        title: document.getElementById('exec-title').value,
-        dist: parseFloat(document.getElementById('exec-dist').value) || 0,
-        hr_zone: document.getElementById('exec-hr').value,
-        status: status,
-        notes: document.getElementById('exec-notes').value
-    };
-
-    await supabaseClient.from('imported_workouts').insert([payload]);
-
-    if (planId && newDate !== selectedDateStr) {
-        await supabaseClient.from('planned_workouts').update({ date: newDate }).eq('id', planId);
-    }
-
-    closeUploadModal();
-    await fetchAllData();
+.workout-inner-box {
+    background: #ffffff;
+    color: #121214;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--pink);
 }
 
-async function deletePlannedWorkout() {
-    const id = document.getElementById('plan-id').value;
-    if (id && confirm("Eliminare questo allenamento?")) {
-        await supabaseClient.from('planned_workouts').delete().eq('id', id);
-        closePlanModal();
-        await fetchAllData();
-    }
+.btn-full-workout {
+    width: 100%;
+    background: var(--card-inner);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+    text-align: center;
 }
 
-async function deleteImportedWorkout(id) {
-    if (confirm("Eliminare questa esecuzione?")) {
-        await supabaseClient.from('imported_workouts').delete().eq('id', id);
-        await fetchAllData();
-    }
+.workout-notes-box {
+    background: var(--card-inner);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
+
+/* PACE CALCULATOR CARD */
+.calc-form-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 18px;
+    border: 1px solid var(--border-color);
+}
+
+.input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.input-group label { font-size: 0.85rem; color: var(--text-muted); }
+.input-group input, .input-group textarea { background: var(--card-inner); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 12px; font-size: 1rem; width: 100%; }
+
+.calc-result-box {
+    background: var(--card-inner);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 15px 0;
+    border: 1px solid var(--border-color);
+}
+
+.res-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+.res-grid { display: flex; justify-content: space-around; text-align: center; }
+.res-item small { font-size: 0.75rem; color: var(--text-muted); display: block; }
+.res-item strong { font-size: 1rem; margin-top: 4px; display: block; }
+.res-item.highlight strong { color: var(--orange); font-size: 1.15rem; }
+
+.calc-actions { display: flex; gap: 10px; }
+
+/* RECAP TAB */
+.recap-card, .past-history-card, .profile-card { background: var(--card-bg); padding: 16px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 15px; }
+.recap-metrics-grid { display: flex; justify-content: space-around; margin-top: 12px; text-align: center; }
+.metric-box small { font-size: 0.75rem; color: var(--text-muted); display: block; }
+.metric-box strong { font-size: 1.1rem; margin-top: 4px; display: block; }
+
+/* BOTTOM NAVBAR */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: #121214;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    z-index: 50;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.nav-item.active { color: var(--pink); }
+.nav-item i { font-size: 1.2rem; }
+
+/* MODALS */
+.modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); }
+.modal-content { background: var(--card-bg); margin: 5% auto; padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; color: #fff; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border-color); }
+.close-btn { float: right; font-size: 24px; cursor: pointer; color: var(--text-muted); }
+.modal form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.modal input, .modal textarea { background: var(--card-inner); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 12px; width: 100%; }
+.optional-fields-box { background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 4px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+.gpx-drop-zone { border: 2px dashed var(--pink); padding: 20px; text-align: center; border-radius: 12px; background: rgba(255, 121, 198, 0.05); }
