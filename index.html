@@ -170,18 +170,31 @@
                 <label>Titolo / Nome Allenamento</label>
                 <input type="text" id="plan-title" placeholder="Es. Fondo Lento 50'" required>
 
-                <!-- CONTENITORE BLOCCHI ATTIVI (Appaiono in real-time quando clicchi la pillola sotto) -->
-                <div class="optional-fields-box">
-                    <span style="color:var(--orange); font-weight:bold; font-size:0.8rem; margin-bottom:4px; display:block; text-transform:uppercase;">Struttura dell'Allenamento</span>
-                    <div id="active-builder-blocks">
-                        <!-- Qui compaiono i blocchi attivi con il loro input e tasto rosso - -->
+                <!-- CAMPI RIEPILOGO PRE-ALLENAMENTO (Stile Suggerimento) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 5px;">
+                    <div>
+                        <label style="font-size:0.75rem;">Dist. Stima (km)</label>
+                        <input type="number" step="0.01" id="plan-summary-dist" placeholder="es. 8.00">
                     </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Pace Stima</label>
+                        <input type="text" id="plan-summary-pace" placeholder="es. 5:15">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Tempo Stima</label>
+                        <input type="text" id="plan-summary-time" placeholder="es. 45:00">
+                    </div>
+                </div>
 
-                    <!-- PILLOLE VERDI PER AGGIUNGERE IN REAL-TIME -->
+                <!-- CONTENITORE BLOCCHI ATTIVI -->
+                <div class="optional-fields-box" style="margin-top:10px;">
+                    <span style="color:var(--orange); font-weight:bold; font-size:0.8rem; margin-bottom:4px; display:block; text-transform:uppercase;">Struttura dell'Allenamento</span>
+                    <div id="active-builder-blocks"></div>
+
                     <div style="margin-top: 10px;">
                         <div class="add-pills-grid">
                             <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Riscaldamento', 'Tempo 10:00')">+ Riscaldamento</button>
-                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Corsa / Lavoro', 'Tempo 30:00')">+ Corsa / Lavoro</button>
+                            <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Corsa / Lavoro', 'Tempo 30:00')">+ Corsa</button>
                             <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Recupero', 'Tempo 2:00')">+ Recupero</button>
                             <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Ripetizioni', '10 x 400m')">+ Ripetizioni</button>
                             <button type="button" class="btn-add-pill" onclick="addBuilderBlock('Riposo', 'Fermo 1:00')">+ Riposo</button>
@@ -229,8 +242,16 @@
 
                 <label>Titolo Corsa</label>
                 <input type="text" id="exec-title" required>
-                <label>Distanza (km)</label>
-                <input type="number" step="0.01" id="exec-dist" required>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <div>
+                        <label>Distanza (km)</label>
+                        <input type="number" step="0.01" id="exec-dist" required>
+                    </div>
+                    <div>
+                        <label>Tempo Impiegato</label>
+                        <input type="text" id="exec-time" placeholder="es. 45:20">
+                    </div>
+                </div>
                 <label>Zona Cardio</label>
                 <select id="exec-hr">
                     <option value="Z1">Z1 - Recupero</option>
@@ -243,6 +264,13 @@
                 <textarea id="exec-notes" placeholder="Sensazioni, meteo..."></textarea>
                 <button type="submit" class="btn-action-cta btn-add-green" style="width:100%;">Registra Esecuzione</button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DETTAGLI / CONFRONTO PIANIFICATO VS CONCLUSO -->
+    <div id="detail-modal" class="modal">
+        <div class="modal-content" id="detail-modal-content">
+            <!-- Contenuto dinamico con dettagli e confronto -->
         </div>
     </div>
 
