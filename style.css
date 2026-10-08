@@ -30,7 +30,6 @@ body {
     padding: 15px 20px;
 }
 
-/* STILE UNIFORME PER TUTTI I SELECT / DROPDOWN (Sfondo scuro pulito senza blu nativo) */
 select {
     background-color: var(--card-inner) !important;
     color: var(--text-white) !important;
@@ -61,7 +60,6 @@ select option {
     width: auto;
 }
 
-/* CTA E BOTTONI UNIFORMI */
 .btn-action-cta {
     display: inline-flex;
     align-items: center;
@@ -95,7 +93,6 @@ select option {
     border-color: rgba(255, 85, 85, 0.3);
 }
 
-/* GRIGLIA PILLOLE AGGIUNTA RAPIDA (Stile Screenshot) */
 .add-pills-grid {
     display: flex;
     flex-wrap: wrap;
@@ -118,7 +115,6 @@ select option {
     background: rgba(0, 230, 118, 0.25);
 }
 
-/* BLOCCHI ATTIVI NEL COSTRUTTORE */
 .builder-active-row {
     background: var(--card-inner);
     border: 1px solid var(--border-color);
@@ -162,7 +158,6 @@ select option {
     flex-shrink: 0;
 }
 
-/* BADGE STATUS A PILLOLA */
 .tag-pill {
     display: inline-flex;
     align-items: center;
@@ -185,7 +180,6 @@ select option {
 .page-title-box h2 { font-size: 1.3rem; color: var(--pink); }
 .page-title-box p { font-size: 0.85rem; color: var(--text-muted); }
 
-/* TOP STATS CARD */
 .top-stats-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -204,7 +198,6 @@ select option {
 .race-countdown small { color: var(--text-muted); font-size: 0.75rem; display: block; }
 .race-countdown strong { color: var(--orange); font-size: 0.95rem; }
 
-/* MONTH SELECTOR */
 .month-selector {
     display: flex;
     justify-content: space-between;
@@ -214,7 +207,6 @@ select option {
 .nav-arrow { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
 #current-month-label { font-weight: bold; font-size: 1.05rem; }
 
-/* CALENDARIO QUADRATINI */
 .week-pills-container {
     display: flex;
     justify-content: space-between;
@@ -252,7 +244,6 @@ select option {
     text-transform: capitalize;
 }
 
-/* WORKOUT CARD DESIGN */
 .main-workout-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -305,7 +296,6 @@ select option {
     color: var(--text-muted);
 }
 
-/* PACE CALCULATOR CARD */
 .calc-form-card {
     background: var(--card-bg);
     border-radius: 16px;
@@ -333,13 +323,11 @@ select option {
 
 .calc-actions { display: flex; gap: 10px; }
 
-/* RECAP TAB */
 .recap-card, .past-history-card, .profile-card { background: var(--card-bg); padding: 16px; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 15px; }
 .recap-metrics-grid { display: flex; justify-content: space-around; margin-top: 12px; text-align: center; }
 .metric-box small { font-size: 0.75rem; color: var(--text-muted); display: block; }
 .metric-box strong { font-size: 1.1rem; margin-top: 4px; display: block; }
 
-/* BOTTOM NAVBAR */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -370,7 +358,6 @@ select option {
 .nav-item.active { color: var(--pink); }
 .nav-item i { font-size: 1.2rem; }
 
-/* MODALS */
 .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); }
 .modal-content { background: var(--card-bg); margin: 5% auto; padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; color: #fff; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border-color); }
 .close-btn { float: right; font-size: 24px; cursor: pointer; color: var(--text-muted); }
@@ -380,66 +367,11 @@ select option {
 .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
 .gpx-drop-zone { border: 2px dashed var(--pink); padding: 20px; text-align: center; border-radius: 12px; background: rgba(255, 121, 198, 0.05); }
 
-/* Pallino rosa sotto il giorno che ha un allenamento pianificato */
-.day-pill-square .planned-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--pink);
-    margin-top: 4px;
-}
-
-/* Tasto "Modifica" testuale nell'intestazione della card */
-.btn-link-muted {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.summary-box-item small i { color: var(--orange); margin-right: 3px; }
-
-/* Lista passi stile schermata pulita */
-.steps-title {
-    color: var(--orange);
-    font-size: 0.72rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 4px 0 4px 2px;
-}
-
-.steps-list { margin-bottom: 8px; }
-
-.step-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 4px;
-    border-bottom: 1px solid var(--border-color);
-}
-.step-line:last-child { border-bottom: none; }
-
-.step-bar {
-    width: 4px;
-    height: 28px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-.step-icon {
-    color: var(--pink);
-    width: 16px;
-    text-align: center;
-    font-size: 0.85rem;
-}
-
-.step-text { display: flex; flex-direction: column; }
-.step-text strong { font-size: 0.9rem; color: var(--text-white); }
-.step-text span { font-size: 0.8rem; color: var(--text-muted); }
-
-.empty-steps { color: var(--text-muted); font-size: 0.85rem; padding: 6px 0; }
+/* =====================================================================
+   AGGIUNTE – incolla in fondo a style.css
+   (se avevi già incollato la versione precedente, sostituiscila con questa)
+   Usa solo i colori già definiti in :root
+   ===================================================================== */
 
 /* ---- Riepilogo a 3 box (Distanza / Pace / Tempo) ---- */
 .pre-workout-summary-grid {
@@ -573,139 +505,6 @@ select option {
 }
 .recap-run small { display: block; color: var(--text-muted); font-size: 0.75rem; margin-top: 2px; }
 
-
-/* ---- Riepilogo a 3 box (Distanza / Pace / Tempo) ---- */
-.pre-workout-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
-}
-.summary-box-item {
-    background: var(--card-inner);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 10px 6px;
-    text-align: center;
-}
-.summary-box-item small {
-    display: block;
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-.summary-box-item small i { color: var(--orange); margin-right: 2px; }
-.summary-box-item strong { display: block; font-size: 0.95rem; margin-top: 4px; color: var(--text-white); }
- 
-/* ---- Card esecuzione ---- */
-.exec-title { font-weight: bold; font-size: 1rem; margin: 2px 0 10px; color: var(--text-white); }
-.card-actions-row { display: flex; gap: 8px; }
-.card-actions-row .btn-full-workout { flex: 1; }
-.btn-danger-outline { color: var(--red); border-color: rgba(255, 85, 85, 0.3); }
-.btn-full-workout i, .btn-link-muted i { margin-right: 4px; }
- 
-/* ---- Calendario: icona di stato ---- */
-.day-pill-square .planned-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pink); margin-top: 4px; }
-.day-pill-square .check-icon.status-done { color: var(--green); }
-.day-pill-square .check-icon.status-to-fix { color: var(--red); }
-.day-pill-square .check-icon.status-in-progress { color: var(--blue); }
- 
-.btn-link-muted { background: none; border: none; color: var(--text-muted); font-size: 0.85rem; cursor: pointer; }
- 
-/* ---- Lista passi ---- */
-.steps-title { color: var(--orange); font-size: 0.72rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 6px 0 4px 2px; }
-.steps-list { margin-bottom: 8px; }
-.step-line { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border-color); }
-.step-line:last-child { border-bottom: none; }
-.step-nested { margin-left: 18px; border-left: 1px dashed var(--border-color); padding-left: 6px; }
-.step-bar { width: 4px; height: 28px; border-radius: 2px; flex-shrink: 0; }
-.step-icon { color: var(--pink); width: 16px; text-align: center; font-size: 0.85rem; }
-.step-text { display: flex; flex-direction: column; }
-.step-text strong { font-size: 0.9rem; color: var(--text-white); }
-.step-text span { font-size: 0.8rem; color: var(--text-muted); }
-.empty-steps { color: var(--text-muted); font-size: 0.85rem; padding: 6px 0; }
-.calc-warning { color: var(--orange); font-size: 0.75rem; margin: 2px 0 8px; }
- 
-/* ---- Builder dei passi (modale) ---- */
-.builder-step, .builder-block {
-    background: var(--card-inner);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
-}
-.builder-block { border-style: dashed; border-color: rgba(255, 121, 198, 0.4); background: rgba(255, 255, 255, 0.02); }
-.builder-block .builder-step { margin-top: 6px; }
-.bs-head { display: flex; align-items: center; gap: 8px; }
-.bs-head .builder-active-label { flex: 1; min-width: 0; }
-.bs-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.bs-fields select { width: auto !important; padding: 6px 26px 6px 8px; font-size: 0.8rem; border-radius: 8px; }
-.bs-fields .bs-value { min-width: 110px; }
-.bs-fields .bs-pace { min-width: 90px; }
-.modal .bs-fields input { padding: 6px 8px; border-radius: 8px; font-size: 0.85rem; width: auto; }
-.bs-fixed { font-size: 0.8rem; color: var(--text-muted); align-self: center; }
-.bs-reps { max-width: 64px; flex: 0 0 64px !important; text-align: center; }
-.bs-x { font-size: 0.75rem; color: var(--text-muted); }
-.bb-add { margin-top: 6px; }
-.bs-hint { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; min-height: 0.9em; }
-.bs-hint.is-warning { color: var(--orange); }
-.is-auto { opacity: 0.75; cursor: not-allowed; }
-.bs-flash { outline: 2px solid var(--pink); }
- 
-/* ---- Confronto pianificato vs eseguito ---- */
-.cmp-card {
-    background: var(--card-inner);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    margin-top: 12px;
-}
-.cmp-head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--green); margin-bottom: 8px; }
-.cmp-bar { height: 6px; background: var(--card-bg); border-radius: 4px; overflow: hidden; margin: 6px 0 10px; }
-.cmp-bar > div { height: 100%; border-radius: 4px; }
-.cmp-row { display: grid; grid-template-columns: 1.1fr 1fr 1fr 0.9fr; gap: 6px; font-size: 0.82rem; padding: 6px 0; border-bottom: 1px solid var(--border-color); align-items: center; }
-.cmp-row:last-of-type { border-bottom: none; }
-.cmp-row > span:first-child { color: var(--text-muted); }
-.cmp-row-head { font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); }
-.cmp-delta { font-size: 0.75rem; text-align: right; color: var(--text-muted); }
-.cmp-legend { font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; }
- 
-/* ---- Recap per settimana ---- */
-.recap-filters { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
-.recap-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.recap-chip {
-    background: var(--card-inner);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-    padding: 5px 12px;
-    border-radius: 16px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    cursor: pointer;
-}
-.recap-chip.active { border-color: var(--pink); color: var(--pink); background: rgba(255, 121, 198, 0.12); }
-.recap-chip.chip-done.active { border-color: var(--green); color: var(--green); background: rgba(0, 230, 118, 0.12); }
-.recap-chip.chip-skip.active { border-color: var(--red); color: var(--red); background: rgba(255, 85, 85, 0.12); }
-.recap-chip.chip-moved.active { border-color: var(--blue); color: var(--blue); background: rgba(97, 175, 239, 0.12); }
-.recap-week { border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
-.recap-week-head { display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; }
-.recap-week-head small, .recap-week-km small { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
-.recap-week-km { text-align: right; font-size: 0.85rem; }
-.recap-run {
-    background: var(--card-inner);
-    border: 1px solid var(--border-color);
-    border-left: 3px solid var(--green);
-    padding: 10px;
-    border-radius: 8px;
-    margin-top: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-}
-.recap-run small { display: block; color: var(--text-muted); font-size: 0.75rem; margin-top: 2px; }
- 
 /* ---- Pulsanti solo icona (+ aggiungi, matita modifica, − elimina) ---- */
 .icon-btn-row { display: inline-flex; align-items: center; gap: 6px; }
 .btn-circle-muted, .btn-circle-green {
@@ -715,20 +514,49 @@ select option {
 }
 .btn-circle-muted { background: var(--card-inner); color: var(--text-muted); border: 1px solid var(--border-color); }
 .btn-circle-green { background: rgba(0, 230, 118, 0.15); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.3); }
- 
-/* ---- Cerchio settimanale ---- */
-.ring-switch { color: var(--pink); font-size: 0.7rem; margin-left: 2px; }
-.ring-sub { display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
-.ring-week { display: flex; gap: 5px; margin-top: 7px; }
-.ring-dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--border-color); background: transparent; }
-.ring-dot.planned { border-color: var(--pink); }
-.ring-dot.rest { background: var(--border-color); }
-.ring-dot.st-done { background: var(--green); border-color: var(--green); }
-.ring-dot.st-to-fix { background: var(--red); border-color: var(--red); }
-.ring-dot.st-in-progress { background: var(--blue); border-color: var(--blue); }
-.ring-dot.is-today { outline: 1px solid var(--text-white); outline-offset: 2px; }
-.race-sub { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
- 
+
+/* ---- Card in alto: cerchio km + prossima gara (pensata per iPhone) ---- */
+.top-stats-card { flex-wrap: wrap; gap: 12px; }
+.ring-container { flex: 1 1 auto; min-width: 0; }
+.ring-container .progress-ring { flex-shrink: 0; }
+.ring-text { min-width: 0; }
+.ring-sub { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+.race-countdown {
+    flex: 1 1 100%;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    text-align: left; border-top: 1px solid var(--border-color); padding-top: 10px;
+}
+.race-countdown > div { min-width: 0; }
+.race-countdown small { display: block; }
+.race-countdown strong { display: block; color: var(--orange); font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-countdown .race-right { text-align: right; flex-shrink: 0; }
+.race-countdown .race-right strong { color: var(--text-white); }
+.day-pill-square .check-icon.status-race { color: var(--orange); }
+
+/* ---- Profilo: gare e record (stile card a colonne) ---- */
+.goal-section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--text-muted); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;
+    margin: 18px 2px 10px;
+}
+.goal-card {
+    background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+    padding: 10px; margin-bottom: 10px; cursor: pointer;
+}
+.goal-main { display: grid; grid-template-columns: 1.05fr 1fr 1fr 1.15fr; align-items: center; }
+.goal-tile {
+    background: var(--card-inner); border-radius: 12px; min-height: 64px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-weight: bold; font-size: 0.95rem; padding: 6px; line-height: 1.2;
+}
+.goal-col { text-align: center; padding: 0 4px; border-left: 1px solid var(--border-color); }
+.goal-main .goal-col:nth-child(2) { border-left: none; }
+.goal-col small { display: block; color: var(--text-muted); font-size: 0.75rem; }
+.goal-col strong { display: block; font-size: 0.9rem; margin-top: 3px; white-space: nowrap; }
+.goal-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); }
+.goal-foot b { color: var(--orange); }
+.goal-src { display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; }
+
 /* ---- Schermata Pace: sezioni extra ---- */
 .calc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .calc-extra { margin-top: 12px; }
@@ -738,7 +566,7 @@ select option {
 .calc-row strong { color: var(--orange); }
 .calc-row small { color: var(--text-muted); text-align: right; font-size: 0.75rem; }
 .calc-tip { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
- 
+
 /* ---- Trascina per riordinare i passi ---- */
 .bs-head { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .bs-drag { color: var(--text-muted); font-size: 0.8rem; padding: 2px 2px 2px 0; }
@@ -746,4 +574,23 @@ select option {
 .bs-chosen { border-color: var(--pink) !important; }
 .bs-dragging { opacity: 0.95; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); transform: scale(1.02); }
 .bb-inner { min-height: 14px; }
- 
+
+/* ---- Impostazioni facoltative di ogni passo (Durata / Pace / ZF) ---- */
+.bs-field { display: inline-flex; align-items: center; gap: 4px; }
+.bs-field[hidden], .bs-add-field[hidden] { display: none !important; }
+.bs-x-field {
+    background: none; border: none; color: var(--text-muted); font-size: 1.1rem; line-height: 1;
+    padding: 0 4px; cursor: pointer;
+}
+.bs-add-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.bs-add-field {
+    background: transparent; color: var(--green); border: 1px dashed rgba(0, 230, 118, 0.35);
+    padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: bold; cursor: pointer;
+}
+
+/* ---- iPhone: niente spostamenti laterali della pagina e niente zoom sui campi ---- */
+html, body { overflow-x: hidden; max-width: 100%; }
+body { overscroll-behavior-x: none; }
+.modal-content { overflow-x: hidden; }
+.modal input, .modal select, .modal textarea { font-size: 16px; max-width: 100%; }
+.modal .bs-fields .bs-value, .modal .bs-fields .bs-pace { min-width: 0; width: 7.5em; }

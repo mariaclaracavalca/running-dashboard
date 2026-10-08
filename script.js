@@ -142,7 +142,8 @@ let currentWeekOffset = 0;
 let selectedDateStr = toLocalISO(new Date());
 let recapFilter = { status: 'all', weeks: 4 };
 let gpxData = null; // dati letti dal GPX in corso di inserimento
-let ringMetric = 'km'; // cerchio in alto: 'km' | 'sessioni' | 'tempo' (tocca per cambiare)
+let allGoals = [];            // gare in programma e record personali
+let goalsUnavailable = false; // true se la tabella athlete_goals non esiste ancora
 
 // Ordine dei modelli nel menu (quelli non presenti nell'HTML vengono aggiunti da initUI)
 const TEMPLATE_MENU = [
@@ -313,6 +314,7 @@ function calcStep(s) {
     const pm = paceMid(s);
     let d, t;
     if (s.type === 'rest') { d = 0; t = s.time_s || 0; }
+    else if (s.mode === 'open') { d = s.type === 'recovery' ? 0 : null; t = null; } // passo "Aperto" (a Lap)
     else if (s.mode === 'dist') { d = s.dist_km || 0; t = pm ? d * pm : null; }
     else {
         t = s.time_s || 0;
@@ -443,8 +445,13 @@ async function fetchAllData() {
     allPlannedWorkouts = (planned || []).map(w => ({ ...w, date: normDate(w.date) }));
     allImportedWorkouts = (imported || []).map(w => ({ ...w, date: normDate(w.date), status: w.status || 'done' }));
 
-    if (allPlannedWorkouts.length === 0) await seedDefaultWorkouts();
-    else renderApp();
+    // Gare e record personali (tabella athlete_goals). Se la tabella non esiste ancora l'app funziona lo stesso.
+    const { data: goals, error: e3 } = await supabaseClient.from('athlete_goals').select('*').order('date', { ascending: true });
+    if (e3) { goalsUnavailable = true; allGoals = []; console.warn('[Supabase] athlete_goals:', e3.message); }
+    else { goalsUnavailable = false; allGoals = (goals || []).map(g => ({ ...g, date: normDate(g.date), dist_km: parseFloat(g.dist_km) })); }
+
+    // Nessun dato di esempio: l'app mostra solo quello che hai inserito tu
+    renderApp();
 }
 
 function buildPlanPayload(user, date, t) {
@@ -458,14 +465,6 @@ function buildPlanPayload(user, date, t) {
         custom_fields: { _v: 2, steps: t.steps },
         notes: t.notes || null
     };
-}
-
-async function seedDefaultWorkouts() {
-    const keys = ['fondo_lento', 'rip_brevi', 'fondo_lento', 'tempo_run', 'riposo', 'rip_300_1k', 'lungo'];
-    const rows = getDatesOfWeek(0).map((date, i) => buildPlanPayload('Maria', date, templatesData[keys[i]]));
-    const { error } = await supabaseClient.from('planned_workouts').insert(rows);
-    if (reportError('seed allenamenti', error)) { renderApp(); return; }
-    await fetchAllData();
 }
 
 /* =====================================================================
@@ -520,6 +519,7 @@ function renderApp() {
     renderDayDetails(selectedDateStr, planned, imported);
     updateWeeklyStats(dates, planned, imported);
     renderRecapTab(dates, planned, imported);
+    renderProfile();
 }
 
 function renderWeekCalendarPills(dates, planned, imported) {
@@ -534,6 +534,7 @@ function renderWeekCalendarPills(dates, planned, imported) {
         const st = ['done', 'in-progress', 'to-fix'].find(s => execs.some(e => e.status === s));
         let marker = '';
         if (st) marker = `<i class="fa-solid ${STATUS[st].icon} check-icon status-${st}" title="${STATUS[st].label}"></i>`;
+        else if (userGoals('race').some(g => g.date === dateStr)) marker = '<i class="fa-solid fa-trophy check-icon status-race" title="Gara"></i>';
         else if (hasPlanned) marker = '<span class="planned-dot"></span>';
         return `
             <div class="day-pill-square ${dateStr === selectedDateStr ? 'active' : ''}" onclick="selectDate('${dateStr}')">
@@ -555,6 +556,7 @@ function renderWeekCalendarPills(dates, planned, imported) {
 function describeStep(s) {
     const parts = [];
     if (s.type === 'rest') parts.push(fmtDuration(s.time_s) + ' Fermo');
+    else if (s.mode === 'open') parts.push('Aperto (Lap)');
     else if (s.mode === 'dist') parts.push(fmtDist(s.dist_km));
     else parts.push(fmtDuration(s.time_s));
     if (s.pace_lo) parts.push(`Pace ${fmtPace(s.pace_lo, s.pace_hi)} /km`);
@@ -604,7 +606,24 @@ function renderDayDetails(dateStr, planned, imported) {
     const container = document.getElementById('day-workout-details');
     const dayPlanned = planned.filter(w => w.date === dateStr);
     const dayImported = imported.filter(w => w.date === dateStr);
+    const dayRaces = userGoals('race').filter(g => g.date === dateStr);
     let html = '';
+
+    // Gara del giorno (gestita nel Profilo)
+    dayRaces.forEach(r => {
+        const est = estimateRace(r.dist_km);
+        html += `
+            <div class="main-workout-card" style="border-color:var(--orange);">
+                <div class="workout-type-header" style="color:var(--orange);">
+                    <span><i class="fa-solid fa-trophy"></i> Gara: ${esc(titleCase(r.name || fmtDist(r.dist_km)))}</span>
+                </div>
+                ${summaryGrid([
+                    ['fa-ruler', 'Distanza', fmtDist(r.dist_km)],
+                    ['fa-stopwatch', 'Stima', est ? fmtDuration(est.time) : '--'],
+                    ['fa-bullseye', 'Obiettivo', r.time_s ? fmtDuration(r.time_s) : '--']
+                ])}
+            </div>`;
+    });
 
     dayImported.forEach(imp => {
         const st = STATUS[imp.status] || STATUS.done;
@@ -659,7 +678,7 @@ function renderDayDetails(dateStr, planned, imported) {
                     ['fa-gauge-high', 'Pace Medio', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : '--'],
                     ['fa-clock', 'Tempo', sum.time ? fmtDuration(sum.time) : '--']
                 ])}
-                ${sum.partial ? '<p class="calc-warning">Stima Parziale: Alcuni Passi Non Hanno Il Pace, Quindi I Km Non Sono Calcolabili.</p>' : ''}
+                ${sum.partial ? '<p class="calc-warning">Stima Parziale: Alcuni Passi Non Hanno Pace O Durata, Quindi Km E Tempo Sono Calcolati Solo In Parte.</p>' : ''}
                 <div class="steps-title">Passi</div>
                 <div class="steps-list">${renderStepLines(sum.steps) || '<p class="empty-steps">Nessun Passo Inserito.</p>'}</div>`}
                 ${p.notes ? `<div class="workout-notes-box">📝 ${esc(p.notes)}</div>` : ''}
@@ -667,7 +686,7 @@ function renderDayDetails(dateStr, planned, imported) {
             </div>`;
     });
 
-    if (!dayPlanned.length && !dayImported.length) {
+    if (!dayPlanned.length && !dayImported.length && !dayRaces.length) {
         html = `
             <div style="text-align:center; padding:30px 10px;">
                 <p style="color:var(--text-muted); margin-bottom:15px;">Nessun Allenamento Programmato Per Questa Data.</p>
@@ -772,59 +791,19 @@ function updateWeeklyStats(dates, planned, imported) {
     const plannedDays = new Set(weekPlanned.map(w => w.date)).size;
     const ready = weekPlanned.length > 0 && !(REQUIRE_FULL_WEEK && plannedDays < 7);
 
-    // Tre metriche: tocca il cerchio per passare dall'una all'altra
-    const M = {
-        km: {
-            label: 'Km Settimana',
-            done: weekDone.reduce((s, w) => s + (parseFloat(w.dist) || 0), 0),
-            target: weekPlanned.reduce((s, w) => s + planSummary(w).dist, 0),
-            fmt: v => fmtNum(v), unit: ' km', left: v => `Mancano ${fmtNum(v)} km`
-        },
-        sessioni: {
-            label: 'Sessioni Settimana',
-            done: weekDone.length, target: runPlanned.length,
-            fmt: v => String(v), unit: '', left: v => `Mancano ${v} ${v === 1 ? 'Sessione' : 'Sessioni'}`
-        },
-        tempo: {
-            label: 'Tempo Settimana',
-            done: weekDone.reduce((s, w) => s + (parseDuration(w.time_exec, 'min') || 0), 0),
-            target: weekPlanned.reduce((s, w) => s + (planSummary(w).time || 0), 0),
-            fmt: v => fmtHoursMin(v), unit: '', left: v => `Mancano ${fmtHoursMin(v)}`
-        }
-    };
-    const m = M[ringMetric];
-    const pct = ready && m.target > 0 ? m.done / m.target : null;
+    const doneKm = weekDone.reduce((s, w) => s + (parseFloat(w.dist) || 0), 0);
+    const planKm = weekPlanned.reduce((s, w) => s + planSummary(w).dist, 0);
+    const pct = ready && planKm > 0 ? doneKm / planKm : null;
 
-    document.querySelector('.ring-text small').innerHTML = `${m.label} <span class="ring-switch">⇄</span>`;
-    document.getElementById('goal-km-display').innerText = `${m.fmt(m.done)} / ${ready ? m.fmt(m.target) : '--'}${m.unit}`;
+    // Testo semplice: km fatti / km pianificati + numero di allenamenti
+    document.querySelector('.ring-text small').textContent = 'Km Settimana';
+    document.getElementById('goal-km-display').innerText = `${fmtNum(doneKm)} / ${ready ? fmtNum(planKm) : '--'} km`;
+    document.getElementById('ring-sub').textContent = !weekPlanned.length ? 'Nessun Allenamento Pianificato'
+        : !ready ? `Pianificati ${plannedDays}/7 Giorni`
+        : `${weekDone.length} / ${runPlanned.length} Allenamenti`;
 
-    // Percentuale al centro del cerchio
     const pctEl = document.getElementById('ring-pct');
-    const subEl = document.getElementById('ring-pct-sub');
     if (pctEl) pctEl.textContent = pct == null ? '--' : `${Math.round(pct * 100)}%`;
-    if (subEl) subEl.textContent = pct == null ? '' : 'Fatto';
-
-    // Frase motivazionale + serie di giorni consecutivi
-    let sub;
-    if (!weekPlanned.length) sub = 'Pianifica La Settimana';
-    else if (!ready) sub = `Pianifica Ancora ${7 - plannedDays} ${7 - plannedDays === 1 ? 'Giorno' : 'Giorni'}`;
-    else if (pct >= 1) sub = 'Obiettivo Raggiunto! 🎉';
-    else sub = m.left(m.target - m.done);
-    const streak = runStreak(planned, imported);
-    document.getElementById('ring-sub').textContent = sub + (streak >= 2 ? ` · 🔥 ${streak} Giorni Di Fila` : '');
-
-    // Mini settimana: un pallino per giorno
-    const today = toLocalISO(new Date());
-    document.getElementById('ring-week').innerHTML = dates.map(d => {
-        const ex = imported.filter(e => e.date === d);
-        const st = ['done', 'in-progress', 'to-fix'].find(s => ex.some(e => e.status === s));
-        const pl = planned.filter(p => p.date === d);
-        let cls = 'empty';
-        if (st) cls = 'st-' + st;
-        else if (pl.length && pl.every(isRestDay)) cls = 'rest';
-        else if (pl.length) cls = 'planned';
-        return `<span class="ring-dot ${cls} ${d === today ? 'is-today' : ''}" title="${fmtDateShort(d)}"></span>`;
-    }).join('');
 
     const ring = document.getElementById('goal-progress-ring');
     if (ring) {
@@ -834,39 +813,36 @@ function updateWeeklyStats(dates, planned, imported) {
         ring.setAttribute('stroke', pct >= 1 ? '#00e676' : '#ff79c6');
     }
 
-    // Prossimo obiettivo: primo allenamento da oggi in poi, non di riposo e non ancora registrato
-    const next = planned
-        .filter(w => w.date >= today && !isRestDay(w) && !imported.some(e => e.date === w.date))
-        .sort((a, b) => a.date.localeCompare(b.date))[0];
+    renderNextRace();
+}
+
+// Riquadro "Prossima Gara" nella card in alto (le gare si gestiscono nel Profilo)
+function renderNextRace() {
     const box = document.querySelector('.race-countdown');
-    document.getElementById('countdown-val').innerText = next ? titleCase(next.title) : 'Nessun Obiettivo';
-    const tomorrow = toLocalISO(new Date(Date.now() + 86400000));
-    const when = next ? (next.date === today ? 'Oggi' : next.date === tomorrow ? 'Domani' : fmtDateShort(next.date)) : '';
-    document.getElementById('race-sub').textContent = next ? `${when} · ${fmtDist(planSummary(next).dist) || '--'}` : '';
-    box.onclick = next ? () => goToDate(next.date) : null;
-    box.style.cursor = next ? 'pointer' : 'default';
-}
+    if (!box) return;
+    const today = toLocalISO(new Date());
+    const race = userGoals('race').filter(g => g.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const profileBtn = document.querySelectorAll('.nav-item')[3];
+    box.onclick = () => profileBtn && switchTab('profile', profileBtn);
+    box.style.cursor = 'pointer';
 
-function cycleRingMetric() {
-    ringMetric = { km: 'sessioni', sessioni: 'tempo', tempo: 'km' }[ringMetric];
-    updateWeeklyStats(getDatesOfWeek(), userPlanned(), userImported());
-}
-
-function fmtHoursMin(sec) {
-    sec = Math.max(0, Math.round(sec || 0));
-    const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
-    return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
-}
-
-// Giorni consecutivi (fino a oggi o ieri) con corsa fatta o riposo pianificato
-function runStreak(planned, imported) {
-    const ok = d => imported.some(e => e.date === d && e.status === 'done') ||
-        (planned.some(p => p.date === d) && planned.filter(p => p.date === d).every(isRestDay));
-    const d = new Date(); d.setHours(0, 0, 0, 0);
-    if (!ok(toLocalISO(d))) d.setDate(d.getDate() - 1);
-    let n = 0;
-    while (ok(toLocalISO(d)) && n < 366) { n++; d.setDate(d.getDate() - 1); }
-    return n;
+    if (!race) {
+        box.innerHTML = `<div><small>Prossima Gara</small><strong>Nessuna Gara</strong></div>
+            <div class="race-right"><small>Aggiungila Nel Profilo</small></div>`;
+        return;
+    }
+    const days = Math.round((parseLocalDate(race.date) - parseLocalDate(today)) / 86400000);
+    const est = estimateRace(race.dist_km);
+    box.innerHTML = `
+        <div>
+            <small>Prossima Gara</small>
+            <strong>${race.name ? esc(titleCase(race.name)) + ' · ' : ''}${fmtDist(race.dist_km)}</strong>
+            <small>${fmtDateShort(race.date)}</small>
+        </div>
+        <div class="race-right">
+            <strong>${days === 0 ? 'Oggi!' : days === 1 ? 'Domani' : `Tra ${days} Giorni`}</strong>
+            <small>${est ? 'Stima ' + fmtDuration(est.time) : 'Stima --'}</small>
+        </div>`;
 }
 
 /* =====================================================================
@@ -985,12 +961,19 @@ function stepValueText(s) {
     return '';
 }
 
+// Ogni passo ha tre impostazioni facoltative: Durata (distanza o tempo), Pace, ZF.
+// Puoi aggiungerle con "+ Durata / + Pace / + ZF" e toglierle con "×".
+// Senza durata il passo è "Aperto": si passa al successivo a mano (tasto Lap).
 function createStepEl(step) {
     const t = STEP_TYPES[step.type];
     const div = document.createElement('div');
     div.className = 'builder-step';
     div.dataset.type = step.type;
     const mode = t.timeOnly ? 'time' : (step.mode || 'time');
+    const hasDur = t.timeOnly || mode !== 'open';
+    const hasPace = !t.timeOnly && step.pace_lo != null;
+    const hasZone = !t.timeOnly && !!step.zone;
+    const x = f => `<button type="button" class="bs-x-field" data-field="${f}" title="Togli">×</button>`;
     div.innerHTML = `
         <div class="bs-head">
             <span class="bs-drag" title="Tieni Premuto E Trascina"><i class="fa-solid fa-grip-vertical"></i></span>
@@ -999,19 +982,54 @@ function createStepEl(step) {
             <button type="button" class="btn-circle-red bs-remove" title="Rimuovi"><i class="fa-solid fa-minus"></i></button>
         </div>
         <div class="bs-fields">
-            ${t.timeOnly ? '<span class="bs-fixed">Tempo</span>' : `
-            <select class="bs-mode">
-                <option value="dist" ${mode === 'dist' ? 'selected' : ''}>Distanza</option>
-                <option value="time" ${mode === 'time' ? 'selected' : ''}>Tempo</option>
-            </select>`}
-            <input type="text" class="builder-active-input bs-value" value="${esc(stepValueText(step))}">
+            <span class="bs-field f-dur" ${hasDur ? '' : 'hidden'}>
+                ${t.timeOnly ? '<span class="bs-fixed">Tempo</span>' : `
+                <select class="bs-mode">
+                    <option value="dist" ${mode === 'dist' ? 'selected' : ''}>Distanza</option>
+                    <option value="time" ${mode !== 'dist' ? 'selected' : ''}>Tempo</option>
+                </select>`}
+                <input type="text" class="builder-active-input bs-value" value="${esc(stepValueText(step))}">
+                ${t.timeOnly ? '' : x('dur')}
+            </span>
             ${t.timeOnly ? '' : `
-            <input type="text" class="builder-active-input bs-pace" placeholder="Pace 6:20" value="${esc(fmtPace(step.pace_lo, step.pace_hi))}">
-            <select class="bs-zone">${ZONE_OPTIONS.map(z => `<option value="${z}" ${step.zone === z ? 'selected' : ''}>${z || 'ZF'}</option>`).join('')}</select>`}
+            <span class="bs-field f-pace" ${hasPace ? '' : 'hidden'}>
+                <input type="text" class="builder-active-input bs-pace" placeholder="Pace 6:20" value="${esc(fmtPace(step.pace_lo, step.pace_hi))}">
+                ${x('pace')}
+            </span>
+            <span class="bs-field f-zone" ${hasZone ? '' : 'hidden'}>
+                <select class="bs-zone">${ZONE_OPTIONS.filter(Boolean).map(z => `<option value="${z}" ${(step.zone || 'Z2') === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+                ${x('zone')}
+            </span>`}
         </div>
+        ${t.timeOnly ? '' : `
+        <div class="bs-add-fields">
+            <button type="button" class="bs-add-field" data-field="dur">+ Durata</button>
+            <button type="button" class="bs-add-field" data-field="pace">+ Pace</button>
+            <button type="button" class="bs-add-field" data-field="zone">+ ZF</button>
+        </div>`}
         <small class="bs-hint"></small>`;
     updateStepPlaceholder(div);
+    updateFieldButtons(div);
     return div;
+}
+
+// Mostra "+ Durata / + Pace / + ZF" solo per le impostazioni non ancora presenti
+function updateFieldButtons(stepEl) {
+    stepEl.querySelectorAll('.bs-add-field').forEach(btn => {
+        const f = stepEl.querySelector('.f-' + btn.dataset.field);
+        btn.hidden = !f || !f.hidden;
+    });
+}
+function toggleStepField(stepEl, field, show) {
+    const f = stepEl.querySelector('.f-' + field);
+    if (!f) return;
+    f.hidden = !show;
+    if (show) {
+        const input = f.querySelector('input, select');
+        if (input) { input.focus(); input.classList.add('bs-flash'); setTimeout(() => input.classList.remove('bs-flash'), 1000); }
+    }
+    updateFieldButtons(stepEl);
+    recalcBuilder();
 }
 
 function createBlockEl(block) {
@@ -1100,15 +1118,16 @@ function updateStepPlaceholder(el) {
 function readStepEl(el) {
     const type = el.dataset.type;
     const t = STEP_TYPES[type];
-    const mode = t.timeOnly ? 'time' : (el.querySelector('.bs-mode')?.value || 'time');
+    const on = f => { const x = el.querySelector(':scope > .bs-fields > .f-' + f); return !!x && !x.hidden; };
+    const mode = t.timeOnly ? 'time' : (on('dur') ? (el.querySelector('.bs-mode')?.value || 'time') : 'open');
     const raw = el.querySelector('.bs-value').value;
-    const pace = t.timeOnly ? null : parsePace(el.querySelector('.bs-pace').value);
+    const pace = !t.timeOnly && on('pace') ? parsePace(el.querySelector('.bs-pace').value) : null;
     return {
         type, mode,
         dist_km: mode === 'dist' ? parseDistanceKm(raw) : null,
         time_s: mode === 'time' ? parseDuration(raw, t.plain) : null,
         pace_lo: pace?.lo ?? null, pace_hi: pace?.hi ?? null,
-        zone: t.timeOnly ? '' : (el.querySelector('.bs-zone').value || '')
+        zone: !t.timeOnly && on('zone') ? (el.querySelector('.bs-zone').value || '') : ''
     };
 }
 
@@ -1140,14 +1159,12 @@ function addBuilderBlock(keyName) {
     } else if (type) {
         c.appendChild(createStepEl(S(type, type === 'rest' || type === 'recovery' ? { time: 90 } : { time: 600 })));
     } else {
-        // "+ Pace" e "+ ZF": porta al campo dell'ultimo passo di corsa
-        const fields = c.querySelectorAll(keyName === 'Pace' ? '.bs-pace' : '.bs-zone');
-        if (!fields.length) { c.appendChild(createStepEl(S('work', { time: 600 }))); return addBuilderBlock(keyName); }
-        const f = fields[fields.length - 1];
-        f.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        f.focus();
-        f.classList.add('bs-flash');
-        setTimeout(() => f.classList.remove('bs-flash'), 1200);
+        // "+ Pace" e "+ ZF": aggiunge l'impostazione all'ultimo passo (che non sia un Riposo)
+        const steps = [...c.querySelectorAll('.builder-step')].filter(el => el.dataset.type !== 'rest');
+        if (!steps.length) { c.appendChild(createStepEl(S('work', { time: 600 }))); return addBuilderBlock(keyName); }
+        const last = steps[steps.length - 1];
+        last.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        toggleStepField(last, keyName === 'Pace' ? 'pace' : 'zone', true);
     }
     recalcBuilder();
 }
@@ -1156,9 +1173,10 @@ function updateHints() {
     document.querySelectorAll('#active-builder-blocks .builder-step').forEach(el => {
         const s = readStepEl(el);
         const hint = el.querySelector('.bs-hint');
-        const raw = el.querySelector('.bs-value').value.trim();
-        const paceRaw = el.querySelector('.bs-pace')?.value.trim();
+        const raw = s.mode === 'open' ? '' : el.querySelector('.bs-value').value.trim();
+        const paceRaw = s.pace_lo != null || (el.querySelector('.f-pace') && !el.querySelector('.f-pace').hidden) ? el.querySelector('.bs-pace').value.trim() : '';
         const msgs = [];
+        if (s.mode === 'open') msgs.push('Aperto: Passi Al Successivo A Mano (Lap)');
         if (raw) {
             if (s.mode === 'dist') msgs.push(s.dist_km != null ? `= ${fmtDist(s.dist_km)}` : '⚠ Distanza Non Valida');
             else msgs.push(s.time_s != null ? `= ${fmtDurationWords(s.time_s)}` : '⚠ Tempo Non Valido');
@@ -1169,6 +1187,7 @@ function updateHints() {
             if (s.mode === 'dist' && c.time) msgs.push(`≈ ${fmtDuration(c.time)}`);
             if (s.mode === 'time' && c.dist) msgs.push(`≈ ${fmtDist(c.dist)}`);
             if (s.mode === 'time' && c.dist == null) msgs.push('Aggiungi Il Pace Per Calcolare I Km');
+            if (s.zone) msgs.push(s.zone);
         }
         hint.textContent = msgs.join(' · ');
         hint.classList.toggle('is-warning', msgs.some(m => m.startsWith('⚠')));
@@ -1248,30 +1267,23 @@ function initUI() {
     const del = document.getElementById('btn-delete-plan');
     if (del) { del.innerHTML = '<i class="fa-solid fa-minus"></i>'; del.title = 'Elimina'; }
 
-    // Cerchio in alto: percentuale al centro, frase, mini settimana, tocco per cambiare metrica
+    // Cerchio in alto: percentuale al centro + km e numero di allenamenti
     const svg = document.querySelector('.progress-ring');
     if (svg && !document.getElementById('ring-pct')) {
         const NS = 'http://www.w3.org/2000/svg';
         const t1 = document.createElementNS(NS, 'text');
         t1.id = 'ring-pct';
-        Object.entries({ x: 40, y: 43, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 15, 'font-weight': 'bold' }).forEach(([k, v]) => t1.setAttribute(k, v));
-        const t2 = document.createElementNS(NS, 'text');
-        t2.id = 'ring-pct-sub';
-        Object.entries({ x: 40, y: 55, 'text-anchor': 'middle', fill: '#a0a0b0', 'font-size': 8 }).forEach(([k, v]) => t2.setAttribute(k, v));
-        svg.append(t1, t2);
+        Object.entries({ x: 40, y: 45, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 15, 'font-weight': 'bold' }).forEach(([k, v]) => t1.setAttribute(k, v));
+        svg.append(t1);
         document.getElementById('goal-progress-ring').style.transition = 'stroke-dashoffset 0.6s ease';
     }
     const ringBox = document.querySelector('.ring-container');
     if (ringBox && !document.getElementById('ring-sub')) {
-        ringBox.style.cursor = 'pointer';
-        ringBox.title = 'Tocca Per Cambiare: Km / Sessioni / Tempo';
-        ringBox.addEventListener('click', cycleRingMetric);
-        const txt = ringBox.querySelector('.ring-text');
-        txt.insertAdjacentHTML('beforeend', '<small id="ring-sub" class="ring-sub"></small><span id="ring-week" class="ring-week"></span>');
+        ringBox.querySelector('.ring-text').insertAdjacentHTML('beforeend', '<small id="ring-sub" class="ring-sub"></small>');
     }
-    if (!document.getElementById('race-sub')) {
-        document.getElementById('countdown-val').insertAdjacentHTML('afterend', '<small id="race-sub" class="race-sub"></small>');
-    }
+
+    // Profilo: gare in programma e record personali + finestra per inserirli
+    initGoalsUI();
 
     // Schermata Pace: scorciatoie distanze, calcolo automatico e sezioni extra
     initCalculatorExtras();
@@ -1291,6 +1303,10 @@ function initUI() {
     b.addEventListener('click', e => {
         const rm = e.target.closest('.bs-remove');
         if (rm) { rm.closest('.builder-step, .builder-block').remove(); recalcBuilder(); return; }
+        const xf = e.target.closest('.bs-x-field');
+        if (xf) { toggleStepField(xf.closest('.builder-step'), xf.dataset.field, false); return; }
+        const af = e.target.closest('.bs-add-field');
+        if (af) { toggleStepField(af.closest('.builder-step'), af.dataset.field, true); return; }
         const add = e.target.closest('[data-add]');
         if (add) {
             const type = add.dataset.add;
@@ -1688,4 +1704,227 @@ function renderCalcExtras(dist, sec) {
             ${zones.map(([l, z, a, b]) => row(l, `${fmtPaceSec(p10 + a)}–${fmtPaceSec(p10 + b)}`, z)).join('')}
             <p class="calc-tip">Calcolati dal tuo ritmo equivalente sui 10 km (${fmtPaceSec(p10)} /km). Sono indicazioni: se il cuore sale oltre la zona indicata, rallenta.</p>
         </div>`;
+}
+
+
+/* =====================================================================
+   PROFILO: GARE IN PROGRAMMA + RECORD PERSONALI
+   Tabella Supabase "athlete_goals" (vedi supabase-goals.sql)
+   - kind = 'race'   → gara in programma (data, distanza, tempo obiettivo facoltativo)
+   - kind = 'record' → record personale (5 km, 10 km, mezza, maratona)
+   La stima del tempo di gara usa la formula di Riegel:
+   1) dal record personale con la distanza più vicina, se c'è
+   2) altrimenti dal miglior allenamento "Fatto" degli ultimi 120 giorni (≥ 3 km): stima prudente
+   ===================================================================== */
+
+const RECORD_DISTANCES = [['5KM', 5], ['10KM', 10], ['Mezza Maratona', 21.0975], ['Maratona', 42.195]];
+
+// Nome della distanza: 5KM, 10KM, Mezza Maratona, Maratona, altrimenti es. "15KM"
+function recordLabel(km) {
+    const known = RECORD_DISTANCES.find(([, d]) => Math.abs(d - km) < 0.05);
+    return known ? known[0] : fmtDist(km).toUpperCase().replace(' ', '');
+}
+
+function userGoals(kind) { return allGoals.filter(g => g.user_id === currentUser && g.kind === kind); }
+
+function fmtDateIt(dateStr) {
+    if (!dateStr) return '--';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function estimateRace(distKm) {
+    if (!distKm) return null;
+    const recs = userGoals('record').filter(r => r.time_s && r.dist_km);
+    if (recs.length) {
+        const best = recs.reduce((a, b) => Math.abs(Math.log(b.dist_km / distKm)) < Math.abs(Math.log(a.dist_km / distKm)) ? b : a);
+        return { time: riegel(best.time_s, best.dist_km, distKm), source: `Dal Record ${fmtDist(best.dist_km)} (${fmtDuration(best.time_s)})` };
+    }
+    const since = new Date(); since.setDate(since.getDate() - 120);
+    const runs = userImported().filter(e => e.status === 'done' && parseFloat(e.dist) >= 3 && parseDuration(e.time_exec, 'min') && parseLocalDate(e.date) >= since);
+    if (!runs.length) return null;
+    let best = null;
+    runs.forEach(e => {
+        const t = riegel(parseDuration(e.time_exec, 'min'), parseFloat(e.dist), distKm);
+        if (!best || t < best.time) best = { time: t, source: `Dall'Allenamento Del ${fmtDateShort(e.date)} (Stima Prudente)` };
+    });
+    return best;
+}
+
+function initGoalsUI() {
+    const tab = document.getElementById('tab-profile');
+    if (tab && !document.getElementById('profile-goals')) {
+        tab.insertAdjacentHTML('beforeend', '<div id="profile-goals"></div>');
+    }
+    if (!document.getElementById('goal-modal')) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="goal-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeGoalModal()">&times;</span>
+                    <h3 id="goal-modal-title">Gara</h3>
+                    <form id="goal-form" onsubmit="saveGoal(event)">
+                        <input type="hidden" id="goal-id">
+                        <input type="hidden" id="goal-kind">
+                        <label id="goal-name-label">Nome Gara</label>
+                        <input type="text" id="goal-name" placeholder="Es. Corsa Di San Martino">
+                        <label>Data</label>
+                        <input type="date" id="goal-date" required>
+                        <label>Distanza (km)</label>
+                        <input type="text" id="goal-dist" inputmode="decimal" placeholder="es. 10 o 21,1" required>
+                        <label id="goal-time-label">Tempo Obiettivo (Facoltativo)</label>
+                        <input type="text" id="goal-time" placeholder="es. 50:00 o 1:50:00">
+                        <small class="bs-hint" id="goal-hint"></small>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn-action-cta btn-add-green" style="width:100%;">Salva</button>
+                            <button type="button" id="goal-delete" class="btn-action-cta btn-delete-red" title="Elimina" onclick="deleteGoal()"><i class="fa-solid fa-minus"></i></button>
+                        </div>
+                    </form>
+                </div>
+            </div>`);
+        ['goal-dist', 'goal-time'].forEach(id => document.getElementById(id).addEventListener('input', updateGoalHint));
+        document.getElementById('goal-time').addEventListener('blur', e => {
+            const t = parseDuration(e.target.value, 'min');
+            if (t) e.target.value = fmtDuration(t);
+            updateGoalHint();
+        });
+    }
+}
+
+function goalRow(tile, cols, extra = '', onclick = '') {
+    return `
+        <div class="goal-card" ${onclick ? `onclick="${onclick}"` : ''}>
+            <div class="goal-main">
+                <div class="goal-tile">${tile}</div>
+                ${cols.map(([l, v]) => `<div class="goal-col"><small>${l}</small><strong>${v}</strong></div>`).join('')}
+            </div>
+            ${extra}
+        </div>`;
+}
+
+function renderProfile() {
+    const box = document.getElementById('profile-goals');
+    if (!box) return;
+    if (goalsUnavailable) {
+        box.innerHTML = `<div class="profile-card"><p class="calc-tip">Per usare Gare e Record esegui una volta lo script <strong>supabase-goals.sql</strong> in Supabase → SQL Editor, poi ricarica la pagina.</p></div>`;
+        return;
+    }
+    const today = toLocalISO(new Date());
+    const races = userGoals('race').sort((a, b) => a.date.localeCompare(b.date));
+    const future = races.filter(r => r.date >= today), past = races.filter(r => r.date < today).reverse();
+
+    const raceCard = (r, isPast) => {
+        const est = estimateRace(r.dist_km);
+        const days = Math.round((parseLocalDate(r.date) - parseLocalDate(today)) / 86400000);
+        const extra = `
+            <div class="goal-foot">
+                <span>${[r.name ? esc(titleCase(r.name)) : '', isPast ? 'Conclusa' : `<b>${days === 0 ? 'Oggi' : days === 1 ? 'Domani' : `Tra ${days} Giorni`}</b>`, r.time_s ? `Obiettivo ${fmtDuration(r.time_s)}` : ''].filter(Boolean).join(' · ')}</span>
+                <span class="icon-btn-row">
+                    <button class="btn-circle-muted" title="Modifica" onclick="event.stopPropagation(); openGoalModal('race', '${r.id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn-circle-red" title="Elimina" onclick="event.stopPropagation(); deleteGoal('${r.id}')"><i class="fa-solid fa-minus"></i></button>
+                </span>
+            </div>
+            ${est ? `<small class="goal-src">Stima ${est.source}</small>` : '<small class="goal-src">Stima: aggiungi un record o registra qualche corsa con distanza e tempo.</small>'}`;
+        return goalRow(fmtDist(r.dist_km).toUpperCase().replace(' ', ''), [
+            ['Data', fmtDateIt(r.date)],
+            ['Stima', est ? fmtDuration(est.time) : '--'],
+            ['Ritmo', est ? fmtPaceSec(est.time / r.dist_km) + ' / km' : '--']
+        ], extra);
+    };
+
+    // Record: solo quelli inseriti, ordinati per distanza (nessuna riga vuota fissa)
+    const recCards = userGoals('record').sort((a, b) => a.dist_km - b.dist_km).map(r => goalRow(recordLabel(r.dist_km), [
+        ['Tempo', r.time_s ? fmtDuration(r.time_s) : '--'],
+        ['Ritmo', r.time_s ? fmtPaceSec(r.time_s / r.dist_km) + ' / km' : '--'],
+        ['Data', fmtDateIt(r.date)]
+    ], `
+        <div class="goal-foot">
+            <span></span>
+            <span class="icon-btn-row">
+                <button class="btn-circle-muted" title="Modifica" onclick="event.stopPropagation(); openGoalModal('record', '${r.id}')"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-circle-red" title="Elimina" onclick="event.stopPropagation(); deleteGoal('${r.id}')"><i class="fa-solid fa-minus"></i></button>
+            </span>
+        </div>`, `openGoalModal('record', '${r.id}')`)).join('');
+
+    box.innerHTML = `
+        <div class="goal-section-head">
+            <span>Gare In Programma</span>
+            <button class="btn-circle-green" title="Aggiungi Gara" onclick="openGoalModal('race')"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        ${future.length ? future.map(r => raceCard(r, false)).join('') : '<p class="empty-steps">Nessuna Gara In Programma. Aggiungila Con Il +.</p>'}
+        ${past.length ? `<div class="goal-section-head"><span>Gare Passate</span></div>${past.map(r => raceCard(r, true)).join('')}` : ''}
+        <div class="goal-section-head">
+            <span>Record Personali</span>
+            <button class="btn-circle-green" title="Aggiungi Record" onclick="openGoalModal('record')"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        ${recCards || '<p class="empty-steps">Nessun Record. Aggiungilo Con Il +.</p>'}
+        <p class="calc-tip">Puoi aggiungere record su qualsiasi distanza (es. 5, 10, 15, 21,1 km). La stima delle gare usa il record con la distanza più vicina (formula di Riegel); senza record usa il tuo miglior allenamento recente, quindi è più prudente.</p>`;
+}
+
+function openGoalModal(kind, id = null, recordDist = null) {
+    const g = id ? allGoals.find(x => x.id == id) : null;
+    const isRecord = kind === 'record';
+    document.getElementById('goal-form').reset();
+    document.getElementById('goal-id').value = g ? g.id : '';
+    document.getElementById('goal-kind').value = kind;
+    document.getElementById('goal-modal-title').textContent = isRecord
+        ? (g ? `Record ${recordLabel(g.dist_km)}` : 'Nuovo Record')
+        : (g ? 'Modifica Gara' : 'Nuova Gara');
+    ['goal-name', 'goal-name-label'].forEach(i => document.getElementById(i).style.display = isRecord ? 'none' : '');
+    document.getElementById('goal-time-label').textContent = isRecord ? 'Tempo' : 'Tempo Obiettivo (Facoltativo)';
+    document.getElementById('goal-time').required = isRecord;
+    const distEl = document.getElementById('goal-dist');
+    distEl.readOnly = false;
+    distEl.value = g ? String(g.dist_km).replace('.', ',') : (recordDist ? String(recordDist).replace('.', ',') : '');
+    document.getElementById('goal-name').value = g?.name || '';
+    document.getElementById('goal-date').value = g?.date || (isRecord ? toLocalISO(new Date()) : '');
+    document.getElementById('goal-time').value = g?.time_s ? fmtDuration(g.time_s) : '';
+    document.getElementById('goal-delete').style.display = g ? '' : 'none';
+    updateGoalHint();
+    document.getElementById('goal-modal').style.display = 'block';
+}
+function closeGoalModal() { document.getElementById('goal-modal').style.display = 'none'; }
+
+function updateGoalHint() {
+    const d = parseDistanceKm(document.getElementById('goal-dist').value, 1000);
+    const t = parseDuration(document.getElementById('goal-time').value, 'min');
+    const parts = [];
+    if (d) parts.push(`Distanza ${fmtDist(d)}`);
+    if (d && t) parts.push(`Ritmo ${fmtPaceSec(t / d)} /km`);
+    if (d && document.getElementById('goal-kind').value === 'race') {
+        const est = estimateRace(d);
+        if (est) parts.push(`Stima Attuale ${fmtDuration(est.time)}`);
+    }
+    document.getElementById('goal-hint').textContent = parts.join(' · ');
+}
+
+async function saveGoal(e) {
+    e.preventDefault();
+    const id = document.getElementById('goal-id').value;
+    const kind = document.getElementById('goal-kind').value;
+    const dist = parseDistanceKm(document.getElementById('goal-dist').value, 1000);
+    const time = parseDuration(document.getElementById('goal-time').value, 'min');
+    if (!dist) { alert('Inserisci una distanza valida (es. 10 o 21,1).'); return; }
+    if (kind === 'record' && !time) { alert('Inserisci il tempo del record (es. 25:04).'); return; }
+    const payload = {
+        user_id: currentUser, kind,
+        name: kind === 'race' ? (document.getElementById('goal-name').value.trim() || null) : null,
+        date: document.getElementById('goal-date').value || null,
+        dist_km: Math.round(dist * 10000) / 10000,
+        time_s: time || null
+    };
+    const { error } = id
+        ? await supabaseClient.from('athlete_goals').update(payload).eq('id', id)
+        : await supabaseClient.from('athlete_goals').insert([payload]);
+    if (reportError('salvataggio gara/record', error)) return;
+    closeGoalModal();
+    await fetchAllData();
+}
+
+async function deleteGoal(id = null) {
+    id = id || document.getElementById('goal-id').value;
+    if (!id || !confirm('Eliminare definitivamente?')) return;
+    const { error } = await supabaseClient.from('athlete_goals').delete().eq('id', id);
+    if (reportError('eliminazione gara/record', error)) return;
+    closeGoalModal();
+    await fetchAllData();
 }
