@@ -17,23 +17,23 @@ const REQUIRE_FULL_WEEK = true;
    --------------------------------------------------------------------- */
 
 const STEP_TYPES = {
-    warmup:   { label: 'Riscaldamento',  icon: 'fa-fire',           color: 'var(--orange)', plain: 'min' },
-    work:     { label: 'Corsa',          icon: 'fa-person-running', color: 'var(--pink)',   plain: 'min' },
-    recovery: { label: 'Recupero',       icon: 'fa-rotate',         color: '#5a5a78',       plain: 'sec' },
-    rest:     { label: 'Riposo',         icon: 'fa-pause',          color: '#5a5a78',       plain: 'sec', timeOnly: true },
-    cooldown: { label: 'Defaticamento',  icon: 'fa-snowflake',      color: 'var(--orange)', plain: 'min' },
+    warmup:   { label: 'Riscaldamento',  icon: 'fa-fire',           color: 'var(--warm)',    plain: 'min' },
+    work:     { label: 'Esercizio',      icon: 'fa-person-running', color: 'var(--pink)',   plain: 'min' },
+    recovery: { label: 'Recupero',       icon: 'fa-rotate',         color: 'var(--rest)',   plain: 'sec' },
+    rest:     { label: 'Riposo',         icon: 'fa-pause',          color: 'var(--rest)',   plain: 'sec' },
+    cooldown: { label: 'Defaticamento',  icon: 'fa-snowflake',      color: 'var(--ice)',    plain: 'min' },
     repeat:   { label: 'Ripetizioni',    icon: 'fa-repeat',         color: 'var(--pink)' }
 };
 
 const PILL_TO_TYPE = {
-    'Riscaldamento': 'warmup', 'Corsa / Lavoro': 'work', 'Corsa': 'work', 'Recupero': 'recovery',
+    'Riscaldamento': 'warmup', 'Corsa / Lavoro': 'work', 'Corsa': 'work', 'Esercizio': 'work', 'Recupero': 'recovery',
     'Riposo': 'rest', 'Defaticamento': 'cooldown', 'Ripetizioni': 'repeat'
 };
 
 const STATUS = {
-    'done':        { label: 'Fatto',    tag: 'tag-done',        color: 'var(--green)', icon: 'fa-circle-check', title: 'Esecuzione Registrata' },
-    'to-fix':      { label: 'Saltato',  tag: 'tag-to-fix',      color: 'var(--red)',   icon: 'fa-circle-xmark', title: 'Allenamento Saltato' },
-    'in-progress': { label: 'Spostato', tag: 'tag-in-progress', color: 'var(--blue)',  icon: 'fa-circle-right', title: 'Allenamento Spostato' }
+    'done':        { label: 'Fatto',    tag: 'tag-done',        color: 'var(--green)', icon: 'fa-circle-check', title: 'Esecuzione registrata' },
+    'to-fix':      { label: 'Saltato',  tag: 'tag-to-fix',      color: 'var(--red)',   icon: 'fa-circle-xmark', title: 'Allenamento saltato' },
+    'in-progress': { label: 'Spostato', tag: 'tag-in-progress', color: 'var(--blue)',  icon: 'fa-circle-right', title: 'Allenamento spostato' }
 };
 
 /* ---------------------------------------------------------------------
@@ -45,94 +45,48 @@ const S = (type, o = {}) => ({ type, mode: o.dist != null ? 'dist' : 'time', dis
 const R = (reps, steps) => ({ type: 'repeat', reps, steps });
 const P = s => { const [m, x] = s.split(':').map(Number); return m * 60 + x; };
 
+// Tipi di corsa preimpostati (le sigle sono quelle usate nel menu "Tipo di corsa")
 const templatesData = {
-    fondo_lento: {
-        title: "Fondo Lento 50'",
+    cl: {
+        title: "Corsa lenta",
         steps: [S('warmup', { time: 300, pace: P('6:30'), zone: 'Z1' }), S('work', { time: 2400, pace: P('6:00'), zone: 'Z2' }), S('cooldown', { time: 300, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Costruisce la base aerobica e ti fa recuperare dalle sedute dure."
+        notes: "Costruisce la base aerobica e ti fa recuperare dalle corse intense."
     },
-    lungo: {
-        title: "Lungo 95' Finale MM",
-        steps: [S('warmup', { time: 600, pace: P('6:20'), zone: 'Z2' }), S('work', { time: 3900, pace: P('6:00'), zone: 'Z2' }), S('work', { time: 900, pace: P('5:15'), paceHi: P('5:25'), zone: 'Z3' }), S('cooldown', { time: 300, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Insegna al corpo a usare i grassi ed evita il muro. Finale a ritmo mezza maratona."
+    cr: {
+        title: "Corsa di recupero",
+        steps: [S('work', { time: 1800, pace: P('6:30'), paceHi: P('6:50'), zone: 'Z1' })],
+        notes: "Rigenerante: il giorno dopo una corsa intensa, molto lenta, deve sembrare facilissima."
     },
-    rip_brevi: {
-        title: "Ripetute Brevi – 10 × 400 M",
-        steps: [S('warmup', { time: 900, pace: P('6:20'), zone: 'Z2' }), R(10, [S('work', { dist: 0.4, pace: P('4:40'), paceHi: P('4:50'), zone: 'Z5' }), S('recovery', { time: 90, zone: 'Z1' })]), S('cooldown', { time: 600, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Aumenta il VO2max e la velocità di punta."
+    fl: {
+        title: "Corsa lunga",
+        steps: [S('warmup', { dist: 1, pace: P('6:30'), zone: 'Z1' }), S('work', { dist: 14, pace: P('6:15'), paceHi: P('6:30'), zone: 'Z2' }), S('cooldown', { dist: 1, pace: P('6:30'), zone: 'Z1' })],
+        notes: "Resistenza: tutto in Zona 2, ritmo comodo."
     },
-    rip_300_1k: {
-        title: "Ripetute 10 × 300 M + 1 Km",
-        steps: [S('warmup', { dist: 2, pace: P('6:20'), zone: 'Z2' }), R(10, [S('work', { dist: 0.3, pace: P('4:40'), paceHi: P('4:50'), zone: 'Z5' }), S('rest', { time: 90 })]), S('work', { dist: 1, pace: P('5:20'), zone: 'Z4' }), S('rest', { time: 90 }), S('cooldown', { dist: 2, pace: P('6:20'), zone: 'Z2' })],
-        notes: "Velocità sui 300 m, poi 1 km a ritmo sostenuto quando sei già stanca."
-    },
-    rip_lunghe: {
-        title: "Ripetute Lunghe – 5 × 1000 M",
-        steps: [S('warmup', { time: 900, pace: P('6:20'), zone: 'Z2' }), R(5, [S('work', { dist: 1, pace: P('4:55'), paceHi: P('5:05'), zone: 'Z4' }), S('recovery', { time: 120, zone: 'Z1' })]), S('cooldown', { time: 600, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Allenamento specifico per 10 km e mezza maratona."
-    },
-    tempo_run: {
-        title: "Tempo Run (Soglia) – 3 × 10'",
-        steps: [S('warmup', { time: 900, pace: P('6:20'), zone: 'Z2' }), R(3, [S('work', { time: 600, pace: P('5:05'), paceHi: P('5:10'), zone: 'Z4' }), S('recovery', { time: 120, zone: 'Z1' })]), S('cooldown', { time: 600, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Alza la soglia anaerobica."
-    },
-    fartlek: {
-        title: "Fartlek – 10 × (1' + 1')",
+    fr: {
+        title: "Corsa cambio ritmo (Fartlek)",
         steps: [S('warmup', { time: 900, pace: P('6:20'), zone: 'Z2' }), R(10, [S('work', { time: 60, pace: P('4:50'), paceHi: P('5:00'), zone: 'Z4' }), S('recovery', { time: 60, pace: P('6:00'), paceHi: P('6:30'), zone: 'Z2' })]), S('cooldown', { time: 600, pace: P('6:30'), zone: 'Z1' })],
         notes: "Allena i cambi di ritmo e il recupero in corsa."
     },
-    salita: {
-        title: "Ripetute In Salita – 8 × 75\"",
-        steps: [S('warmup', { time: 900, pace: P('6:20'), zone: 'Z2' }), R(8, [S('work', { time: 75, pace: P('5:30'), zone: 'Z5' }), S('recovery', { time: 150, zone: 'Z1' })]), S('cooldown', { time: 600, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Forza specifica per glutei e polpacci. Il pace in salita è solo una stima per calcolare i km."
-    },
-    progressivo: {
-        title: "Progressivo 8 Km",
-        steps: [S('work', { dist: 3, pace: P('6:20'), zone: 'Z2' }), S('work', { dist: 3, pace: P('5:50'), zone: 'Z3' }), S('work', { dist: 2, pace: P('5:20'), zone: 'Z4' })],
-        notes: "Parti lenta e chiudi forte: insegna a gestire il ritmo e a finire in spinta."
-    },
-    fondo_medio: {
-        title: "Fondo Medio 10 Km",
-        steps: [S('warmup', { dist: 1, pace: P('6:20'), zone: 'Z2' }), S('work', { dist: 8, pace: P('5:35'), paceHi: P('5:45'), zone: 'Z3' }), S('cooldown', { dist: 1, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Ritmo 'comodamente impegnativo': migliora la resistenza alla velocità di gara."
-    },
-    lungo_lento: {
-        title: "Lungo Lento 16 Km",
-        steps: [S('work', { dist: 16, pace: P('6:15'), paceHi: P('6:30'), zone: 'Z2' })],
-        notes: "Tutto in Zona 2: costruisce la resistenza senza affaticare troppo."
-    },
-    rip_800: {
-        title: "Ripetute 6 × 800 M",
-        steps: [S('warmup', { dist: 2, pace: P('6:20'), zone: 'Z2' }), R(6, [S('work', { dist: 0.8, pace: P('4:45'), paceHi: P('4:55'), zone: 'Z4' }), S('recovery', { time: 120, zone: 'Z1' })]), S('cooldown', { dist: 1.5, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Classico per i 10 km: ritmo vicino al passo gara, recupero completo."
-    },
-    piramide: {
-        title: "Piramide 200-400-600-800-600-400-200",
-        steps: [S('warmup', { dist: 2, pace: P('6:20'), zone: 'Z2' }),
-            S('work', { dist: 0.2, pace: P('4:30'), zone: 'Z5' }), S('recovery', { time: 60 }),
-            S('work', { dist: 0.4, pace: P('4:40'), zone: 'Z5' }), S('recovery', { time: 90 }),
-            S('work', { dist: 0.6, pace: P('4:45'), zone: 'Z4' }), S('recovery', { time: 120 }),
-            S('work', { dist: 0.8, pace: P('4:50'), zone: 'Z4' }), S('recovery', { time: 150 }),
-            S('work', { dist: 0.6, pace: P('4:45'), zone: 'Z4' }), S('recovery', { time: 120 }),
-            S('work', { dist: 0.4, pace: P('4:40'), zone: 'Z5' }), S('recovery', { time: 90 }),
-            S('work', { dist: 0.2, pace: P('4:30'), zone: 'Z5' }),
-            S('cooldown', { dist: 1.5, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Allena velocità e resistenza nella stessa seduta. Recupero lungo circa quanto metà del tempo di corsa."
-    },
-    allunghi: {
-        title: "Fondo Lento + 6 Allunghi",
-        steps: [S('work', { time: 1800, pace: P('6:10'), zone: 'Z2' }), R(6, [S('work', { dist: 0.1, pace: P('4:00'), paceHi: P('4:20'), zone: 'Z5' }), S('rest', { time: 60 })]), S('cooldown', { time: 300, pace: P('6:30'), zone: 'Z1' })],
-        notes: "Gli allunghi migliorano la tecnica e la reattività senza stancare."
-    },
-    recupero_attivo: {
-        title: "Corsa Di Recupero 30'",
-        steps: [S('work', { time: 1800, pace: P('6:30'), paceHi: P('6:50'), zone: 'Z1' })],
-        notes: "Il giorno dopo una seduta dura: molto lenta, deve sembrare facilissima."
+    it: {
+        // Come la ripetuta di martedì: 2 km a 6' 20", 10 × 300 m in Z5 con 90" di recupero, 1 km a 5' 20", 2 km a 6' 20"
+        title: "Corsa ripetuta",
+        steps: [
+            S('warmup', { dist: 2, pace: P('6:20') }),
+            R(10, [S('work', { dist: 0.3, zone: 'Z5' }), S('recovery', { time: 90 })]),
+            S('work', { dist: 1, pace: P('5:20') }),
+            S('cooldown', { dist: 2, pace: P('6:20') })
+        ],
+        notes: "Velocità sulle ripetute in Z5, poi 1 km a ritmo sostenuto."
     },
     riposo: {
-        title: "Riposo / REST",
+        title: "Riposo",
         steps: [],
-        notes: "Giorno di recupero: stretching, mobilità o niente."
+        notes: ""
+    },
+    libera: {
+        title: "Corsa libera",
+        steps: [{ type: 'work', mode: 'open', dist_km: null, time_s: null, pace_lo: null, pace_hi: null, zone: '' }],
+        notes: ""
     }
 };
 
@@ -145,11 +99,15 @@ let gpxData = null; // dati letti dal GPX in corso di inserimento
 let allGoals = [];            // gare in programma e record personali
 let goalsUnavailable = false; // true se la tabella athlete_goals non esiste ancora
 
-// Ordine dei modelli nel menu (quelli non presenti nell'HTML vengono aggiunti da initUI)
+// Menu "Tipo di corsa" in ordine alfabetico (sigla), Corsa libera in fondo
 const TEMPLATE_MENU = [
-    ['recupero_attivo', "Corsa Di Recupero 30'"], ['lungo_lento', 'Lungo Lento 16 Km'], ['fondo_medio', 'Fondo Medio 10 Km'],
-    ['progressivo', 'Progressivo 8 Km'], ['allunghi', 'Fondo Lento + 6 Allunghi'], ['rip_800', 'Ripetute 6 × 800 M'],
-    ['rip_300_1k', 'Ripetute 10 × 300 M + 1 Km'], ['piramide', 'Piramide 200-400-600-800-600-400-200'], ['riposo', 'Riposo / REST']
+    ['fr', 'Corsa cambio ritmo (Fartlek) · FR'],
+    ['cr', 'Corsa di recupero (rigenerante) · CR'],
+    ['cl', 'Corsa lenta · CL'],
+    ['libera', 'Corsa libera'],
+    ['fl', 'Corsa lunga · FL'],
+    ['it', 'Corsa ripetuta · IT'],
+    ['riposo', 'Riposo']
 ];
 
 /* =====================================================================
@@ -201,8 +159,31 @@ function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 // Iniziale maiuscola per ogni parola, senza toccare il resto (MM, km restano come sono)
+// Etichette fisse dell'HTML: solo la prima lettera maiuscola (es. "Tempo impiegato")
+const KEEP_CAPS = new Set(['Supabase', 'Riegel', 'Maria', 'Magrela', 'Lap', 'Apple', 'Garmin', 'Fartlek']);
+function toSentence(text) {
+    let start = true;
+    return text.replace(/(\S+)(\s*)/g, (m, w, sp) => {
+        let out = w;
+        const bare = w.replace(/[^A-Za-zÀ-ÿ']/g, '');
+        if (!start && /^[(«"']?[A-ZÀ-Ý][a-zà-ÿ']/.test(w) && !KEEP_CAPS.has(bare)) out = w.replace(/[A-ZÀ-Ý]/, c => c.toLowerCase());
+        if (start && /^[A-Z]{2,}$/.test(w)) return out + sp;
+        if (/[A-Za-zÀ-ÿ0-9]/.test(w)) start = /[.!?]$/.test(w) && !/^(Dist|Es)\.$/i.test(w);
+        return out + sp;
+    });
+}
+function sentenceCaseStatic() {
+    const sel = 'label, h2, h3, .page-title-box p, .metric-box small, .res-item small, .res-title, .ring-text small, .race-countdown small, button, option, .optional-fields-box > span, .gpx-drop-zone p, .profile-card p';
+    document.querySelectorAll(sel).forEach(el => {
+        if (el.closest('.user-selector')) return;
+        el.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = toSentence(n.textContent); });
+    });
+    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(el => { el.placeholder = toSentence(el.placeholder); });
+}
+
 function titleCase(s) {
-    return String(s ?? '').replace(/(^|[\s\-\/(–·])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+    s = String(s ?? '');
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtNum(n, dec = 1) {
     return Number(n).toLocaleString('it-IT', { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -253,7 +234,7 @@ function parsePaceOne(str) {
     let s = String(str).trim().toLowerCase().replace(/(min)?\s*\/\s*km/, '').replace(/″/g, '"').replace(/′/g, "'").trim();
     if (!s) return null;
     let min, sec, m;
-    if ((m = s.match(/^(\d{1,2})\s*[:'.,]\s*(\d{1,2})"?$/))) {
+    if ((m = s.match(/^(\d{1,2})\s*[:'.,]+\s*(\d{1,2})\s*"?$/))) { // 6:20 · 6'20" · 6',20" · 6,20 · 6.20
         min = +m[1]; sec = m[2].length === 1 ? +m[2] * 10 : +m[2];
     } else if ((m = s.match(/^(\d{3,4})$/))) {
         min = Math.floor(+m[1] / 100); sec = +m[1] % 100;
@@ -275,7 +256,17 @@ function parsePace(str) {
 function fmtPaceSec(sec) {
     if (sec == null || isNaN(sec)) return '';
     sec = Math.round(sec);
-    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    return `${Math.floor(sec / 60)}' ${String(sec % 60).padStart(2, '0')}"`;
+}
+// Pace dei passi nel formato 6' 20" (valore) o 6' 20" – 6' 40" (intervallo)
+function fmtPaceQ(sec) {
+    if (sec == null || isNaN(sec)) return '';
+    sec = Math.round(sec);
+    return `${Math.floor(sec / 60)}' ${String(sec % 60).padStart(2, '0')}"`;
+}
+function fmtPaceStep(lo, hi) {
+    if (lo == null) return '';
+    return hi ? `${fmtPaceQ(lo)} – ${fmtPaceQ(hi)}` : fmtPaceQ(lo);
 }
 function fmtPace(lo, hi) {
     if (lo == null) return '';
@@ -308,17 +299,42 @@ function fmtDist(km) {
    - Pace medio = tempo dei tratti di corsa ÷ km (esclusi riposi/recuperi da fermo)
    ===================================================================== */
 
-function paceMid(s) { return s.pace_lo ? (s.pace_hi ? (s.pace_lo + s.pace_hi) / 2 : s.pace_lo) : null; }
+// Pace di un passo: tre impostazioni indipendenti e combinabili
+//   pace_val  = Pace (valore)   ·   pace_slow = Ritmo più lento   ·   pace_fast = Ritmo più veloce
+// I passi salvati con il formato precedente (pace_lo / pace_hi) vengono letti allo stesso modo.
+function stepPace(s) {
+    if (s.pace_val != null || s.pace_slow != null || s.pace_fast != null) {
+        return { val: s.pace_val ?? null, slow: s.pace_slow ?? null, fast: s.pace_fast ?? null };
+    }
+    if (s.pace_hi != null) return { val: null, slow: s.pace_hi, fast: s.pace_lo ?? null };
+    return { val: s.pace_lo ?? null, slow: null, fast: null };
+}
+function hasPace(s) { const p = stepPace(s); return p.val != null || p.slow != null || p.fast != null; }
+// Pace usato per i calcoli: il Pace (valore) se c'è, altrimenti il centro dell'intervallo
+function paceMid(s) {
+    const p = stepPace(s);
+    if (p.val != null) return p.val;
+    if (p.slow != null && p.fast != null) return (p.slow + p.fast) / 2;
+    return p.slow ?? p.fast ?? null;
+}
+function describePace(s) {
+    const p = stepPace(s), out = [];
+    if (p.val != null) out.push(`Pace ${fmtPaceQ(p.val)} /km`);
+    if (p.slow != null && p.fast != null) out.push(`Intervallo ${fmtPaceQ(p.fast)} – ${fmtPaceQ(p.slow)} /km`);
+    else if (p.slow != null) out.push(`Non più lento di ${fmtPaceQ(p.slow)} /km`);
+    else if (p.fast != null) out.push(`Non più veloce di ${fmtPaceQ(p.fast)} /km`);
+    return out.join(' · ');
+}
 
 function calcStep(s) {
     const pm = paceMid(s);
     let d, t;
-    if (s.type === 'rest') { d = 0; t = s.time_s || 0; }
-    else if (s.mode === 'open') { d = s.type === 'recovery' ? 0 : null; t = null; } // passo "Aperto" (a Lap)
+    const still = s.type === 'recovery' || s.type === 'rest'; // senza pace contano solo nel tempo
+    if (s.mode === 'open') { d = still ? 0 : null; t = null; } // passo "Aperto" (a Lap)
     else if (s.mode === 'dist') { d = s.dist_km || 0; t = pm ? d * pm : null; }
     else {
         t = s.time_s || 0;
-        d = pm ? t / pm : (s.type === 'recovery' ? 0 : null);
+        d = pm ? t / pm : (still ? 0 : null);
     }
     return {
         dist: d, time: t,
@@ -372,9 +388,14 @@ function planSummary(p) {
         partial: false, structured: false, steps: legacyToSteps(parseFields(p.custom_fields) || {})
     };
 }
+// Giorno di riposo: nessun km e nessun passo, oppure solo passi "Riposo"
 function isRestDay(p) {
     const s = planSummary(p);
-    return s.dist === 0 && (!s.steps || s.steps.length === 0);
+    const flat = st => (st || []).flatMap(x => x.type === 'repeat' ? flat(x.steps) : [x]);
+    const all = flat(s.steps);
+    if (s.dist) return false;
+    // Senza passi è riposo solo se si chiama così (una corsa ancora da strutturare non è riposo)
+    return all.length ? all.every(x => x.type === 'rest') : /riposo|rest/i.test(p.title || '');
 }
 
 // Converte il vecchio formato { "Riscaldamento": "Tempo 5:00", ... } in passi
@@ -555,15 +576,14 @@ function renderWeekCalendarPills(dates, planned, imported) {
 
 function describeStep(s) {
     const parts = [];
-    if (s.type === 'rest') parts.push(fmtDuration(s.time_s) + ' Fermo');
+    if (s.type === 'rest' && s.mode === 'time' && !hasPace(s)) parts.push(fmtDuration(s.time_s) + ' Fermo');
     else if (s.mode === 'open') parts.push('Aperto (Lap)');
     else if (s.mode === 'dist') parts.push(fmtDist(s.dist_km));
     else parts.push(fmtDuration(s.time_s));
-    if (s.pace_lo) parts.push(`Pace ${fmtPace(s.pace_lo, s.pace_hi)} /km`);
-    if (s.zone) parts.push(s.zone);
+    if (hasPace(s)) parts.push(describePace(s));
     const c = calcStep(s);
     if (s.mode === 'dist' && c.time) parts.push(`≈ ${fmtDuration(c.time)}`);
-    if (s.mode === 'time' && s.type !== 'rest' && c.dist) parts.push(`≈ ${fmtDist(c.dist)}`);
+    if (s.mode === 'time' && c.dist) parts.push(`≈ ${fmtDist(c.dist)}`);
     return parts.join(' · ');
 }
 
@@ -575,7 +595,7 @@ function renderStepLines(steps, nested = false) {
             return `
                 <div class="step-line">
                     <span class="step-bar" style="background:${st.color}"></span>
-                    <i class="fa-solid ${st.icon} step-icon"></i>
+                    <i class="fa-solid ${st.icon} step-icon" style="color:${st.color}"></i>
                     <div class="step-text">
                         <strong>${st.label} × ${s.reps}</strong>
                         <span>Totale ${fmtDist(inner.dist * s.reps)} · ${fmtDuration(inner.time * s.reps)}</span>
@@ -586,11 +606,12 @@ function renderStepLines(steps, nested = false) {
         return `
             <div class="step-line ${nested ? 'is-nested' : ''}">
                 <span class="step-bar" style="background:${st.color}"></span>
-                <i class="fa-solid ${st.icon} step-icon"></i>
+                <i class="fa-solid ${st.icon} step-icon" style="color:${st.color}"></i>
                 <div class="step-text">
                     <strong>${st.label}</strong>
                     <span>${esc(describeStep(s))}</span>
                 </div>
+                ${s.zone ? `<span class="zone-chip">${esc(zoneNorm(s.zone))}</span>` : ''}
             </div>`;
     }).join('');
 }
@@ -639,8 +660,8 @@ function renderDayDetails(dateStr, planned, imported) {
                 ])}
                 ${summaryGrid([
                     ['fa-heart', 'Zona FC', esc(imp.hr_zone || '--')],
-                    ['fa-heart-pulse', 'FC Media', imp.hr ? imp.hr + ' bpm' : '--'],
-                    ['fa-percent', 'Vs Piano', complianceLabel(imp, planned)]
+                    ['fa-heart-pulse', 'FC media', imp.hr ? imp.hr + ' bpm' : '--'],
+                    ['fa-percent', 'Vs piano', complianceLabel(imp, planned)]
                 ])}`;
         } else {
             body = `<p class="exec-title">${esc(titleCase(imp.title))}</p>`;
@@ -663,34 +684,38 @@ function renderDayDetails(dateStr, planned, imported) {
     dayPlanned.forEach(p => {
         const sum = planSummary(p);
         const rest = isRestDay(p);
+        // Il pulsante "Aggiungi risultato" sparisce quando il risultato è già registrato
+        const hasResult = dayImported.some(imp => findPlanForExec(imp, dayPlanned)?.id === p.id);
         html += `
             <div class="main-workout-card" style="border-color:var(--pink);">
                 <div class="workout-type-header">
                     <span>${esc(titleCase(p.title))}</span>
                     <span class="icon-btn-row">
-                        ${rest ? '' : `<button class="btn-circle-green" title="Inserisci Risultato / GPX / Stato" onclick="openUploadModal('${p.id}')"><i class="fa-solid fa-plus"></i></button>`}
                         <button class="btn-circle-muted" title="Modifica" onclick="openPlanModal('${p.id}')"><i class="fa-solid fa-pen"></i></button>
                     </span>
                 </div>
-                ${rest ? `<div class="workout-notes-box">Giorno Di Riposo: Nessuna Corsa Prevista.</div>` : `
+                ${rest ? `<div class="workout-notes-box">Giorno di riposo: nessuna corsa prevista.</div>` : `
                 ${summaryGrid([
                     ['fa-ruler', 'Distanza', sum.dist ? fmtNum(sum.dist, 2) + ' km' : '--'],
-                    ['fa-gauge-high', 'Pace Medio', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : '--'],
+                    ['fa-gauge-high', 'Pace medio', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : '--'],
                     ['fa-clock', 'Tempo', sum.time ? fmtDuration(sum.time) : '--']
                 ])}
-                ${sum.partial ? '<p class="calc-warning">Stima Parziale: Alcuni Passi Non Hanno Pace O Durata, Quindi Km E Tempo Sono Calcolati Solo In Parte.</p>' : ''}
+                ${sum.partial ? '<p class="calc-warning">Stima parziale: alcuni passi non hanno pace o durata, quindi km e tempo sono calcolati solo in parte.</p>' : ''}
                 <div class="steps-title">Passi</div>
-                <div class="steps-list">${renderStepLines(sum.steps) || '<p class="empty-steps">Nessun Passo Inserito.</p>'}</div>`}
+                <div class="steps-list">${renderStepLines(sum.steps) || '<p class="empty-steps">Nessun passo inserito.</p>'}</div>`}
                 ${p.notes ? `<div class="workout-notes-box">📝 ${esc(p.notes)}</div>` : ''}
-                <button class="btn-full-workout" onclick="openDetailModal('${p.id}')">Vedi Allenamento Completo →</button>
+                <div class="card-actions-row">
+                    ${rest || hasResult ? '' : `<button class="btn-full-workout btn-result" onclick="openUploadModal('${p.id}')"><i class="fa-solid fa-plus"></i> Aggiungi risultato</button>`}
+                    <button class="btn-full-workout" onclick="openDetailModal('${p.id}')">Vedi dettagli →</button>
+                </div>
             </div>`;
     });
 
     if (!dayPlanned.length && !dayImported.length && !dayRaces.length) {
         html = `
             <div style="text-align:center; padding:30px 10px;">
-                <p style="color:var(--text-muted); margin-bottom:15px;">Nessun Allenamento Programmato Per Questa Data.</p>
-                <button class="btn-action-cta btn-add-green" title="Aggiungi Allenamento" onclick="openPlanModal()"><i class="fa-solid fa-plus"></i></button>
+                <p style="color:var(--text-muted); margin-bottom:15px;">Nessun allenamento programmato per questa data.</p>
+                <button class="btn-action-cta btn-add-green" title="Aggiungi allenamento" onclick="openPlanModal()"><i class="fa-solid fa-plus"></i></button>
             </div>`;
     }
     container.innerHTML = html;
@@ -718,6 +743,35 @@ function complianceLabel(imp, planned) {
     if (!p) return '--';
     const c = compliance(parseFloat(imp.dist), planSummary(p).dist);
     return c ? `<span style="color:${c.color}">${c.pct}%</span>` : '--';
+}
+
+// Confronto passo per passo (solo i passi con un risultato inserito)
+function stepCompareHtml(steps, saved, delta) {
+    const rows = resultRows(steps).filter(r => !r.head && saved[r.key]);
+    if (!rows.length) return '';
+    return `
+        <div class="cmp-card">
+            <div class="cmp-head"><span>Risultato per passo</span></div>
+            <div class="cmp-row cmp-row-head"><span></span><span>Piano</span><span>Eseguito</span><span>Diff.</span></div>
+            ${rows.map(r => {
+                const s = r.step, v = saved[r.key], c = calcStep(s);
+                const t = STEP_TYPES[s.type] || { label: s.type, color: 'var(--text-muted)' };
+                const label = `<span style="color:${t.color}">${esc(r.nested ? t.label + ' · media' : t.label)}</span>`;
+                const planPace = hasPace(s) ? paceMid(s) : null;
+                const planTime = s.mode === 'dist' ? c.time : s.time_s;
+                // Una sola misura per riga: il pace se il piano ha un pace, altrimenti il tempo
+                let plan, done, d = '<span class="cmp-delta"></span>';
+                if (planPace && v.pace_sec != null) {
+                    plan = fmtPaceSec(planPace); done = fmtPaceSec(v.pace_sec); d = delta(v.pace_sec, planPace, 't', 'less');
+                } else if (planTime && v.time_s != null) {
+                    plan = fmtDuration(planTime); done = fmtDuration(v.time_s); d = delta(v.time_s, planTime, 't', s.mode === 'dist' ? 'less' : 'neutral');
+                } else {
+                    plan = stepPlanText(s);
+                    done = v.time_s != null ? fmtDuration(v.time_s) : v.pace_sec != null ? fmtPaceSec(v.pace_sec) : fmtDist(v.dist_km);
+                }
+                return `<div class="cmp-row">${label}<span>${esc(plan)}</span><strong>${esc(done)}</strong>${d}</div>`;
+            }).join('')}
+        </div>`;
 }
 
 function openDetailModal(id) {
@@ -748,17 +802,17 @@ function openDetailModal(id) {
         cmp = `
             <div class="cmp-card">
                 <div class="cmp-head">
-                    <span>Confronto Pianificato Vs Eseguito</span>
+                    <span>Confronto pianificato vs eseguito</span>
                     ${c ? `<strong style="color:${c.color}">${c.pct}%</strong>` : ''}
                 </div>
                 ${c ? `<div class="cmp-bar"><div style="width:${Math.min(c.pct, 100)}%; background:${c.color}"></div></div>` : ''}
                 <div class="cmp-row cmp-row-head"><span></span><span>Piano</span><span>Eseguito</span><span>Diff.</span></div>
-                <div class="cmp-row"><span>Distanza</span><span>${sum.dist ? fmtNum(sum.dist, 2) + ' km' : '--'}</span><strong>${fmtNum(exec.dist || 0, 2)} km</strong>${delta(+exec.dist, sum.dist, 'km', 'more')}</div>
+                <div class="cmp-row"><span>Distanza</span><span>${sum.dist ? fmtNum(sum.dist, 2) + ' km' : '--'}</span><strong>${+exec.dist ? fmtNum(+exec.dist, 2) + ' km' : '--'}</strong>${+exec.dist ? delta(+exec.dist, sum.dist, 'km', 'more') : '<span class="cmp-delta"></span>'}</div>
                 <div class="cmp-row"><span>Tempo</span><span>${sum.time ? fmtDuration(sum.time) : '--'}</span><strong>${esc(exec.time_exec || '--')}</strong>${delta(doneTime, sum.time, 't')}</div>
                 <div class="cmp-row"><span>Pace</span><span>${sum.pace ? fmtPaceSec(sum.pace) : '--'}</span><strong>${donePace ? fmtPaceSec(donePace) : '--'}</strong>${delta(donePace, sum.pace, 't', 'less')}</div>
                 <div class="cmp-row"><span>Zona FC</span><span>${zones || '--'}</span><strong>${esc(exec.hr_zone || '--')}</strong><span class="cmp-delta">${exec.hr ? exec.hr + ' bpm' : ''}</span></div>
-                <p class="cmp-legend">Verde: 90–110% Del Piano · Arancione: 70–130% · Rosso: Fuori Range</p>
-            </div>`;
+                <p class="cmp-legend">Verde: 90–110% del piano · Arancione: 70–130% · Rosso: fuori range</p>
+            </div>${stepCompareHtml(sum.steps, savedStepResults(exec), delta)}`;
     } else if (other) {
         const st = STATUS[other.status];
         cmp = `<div class="cmp-card" style="border-color:${st.color}"><div class="cmp-head"><span>Stato</span><span class="tag-pill ${st.tag}">${st.label}</span></div>${other.notes ? `<p class="cmp-legend">${esc(other.notes)}</p>` : ''}</div>`;
@@ -769,12 +823,12 @@ function openDetailModal(id) {
         <h3 style="color:var(--pink); margin-bottom:12px;">${esc(titleCase(item.title))}</h3>
         ${summaryGrid([
             ['fa-ruler', 'Distanza', sum.dist ? fmtNum(sum.dist, 2) + ' km' : '--'],
-            ['fa-gauge-high', 'Pace Medio', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : '--'],
+            ['fa-gauge-high', 'Pace medio', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : '--'],
             ['fa-clock', 'Tempo', sum.time ? fmtDuration(sum.time) : '--']
         ])}
         ${cmp}
         <div class="steps-title" style="margin-top:12px">Passi</div>
-        <div class="steps-list">${renderStepLines(sum.steps) || '<p class="empty-steps">Nessun Passo Inserito.</p>'}</div>
+        <div class="steps-list">${renderStepLines(sum.steps) || '<p class="empty-steps">Nessun passo inserito.</p>'}</div>
         ${item.notes ? `<div class="workout-notes-box">📝 ${esc(item.notes)}</div>` : ''}`;
     document.getElementById('detail-modal').style.display = 'block';
 }
@@ -796,11 +850,11 @@ function updateWeeklyStats(dates, planned, imported) {
     const pct = ready && planKm > 0 ? doneKm / planKm : null;
 
     // Testo semplice: km fatti / km pianificati + numero di allenamenti
-    document.querySelector('.ring-text small').textContent = 'Km Settimana';
+    document.querySelector('.ring-text small').textContent = 'Km settimana';
     document.getElementById('goal-km-display').innerText = `${fmtNum(doneKm)} / ${ready ? fmtNum(planKm) : '--'} km`;
-    document.getElementById('ring-sub').textContent = !weekPlanned.length ? 'Nessun Allenamento Pianificato'
-        : !ready ? `Pianificati ${plannedDays}/7 Giorni`
-        : `${weekDone.length} / ${runPlanned.length} Allenamenti`;
+    document.getElementById('ring-sub').textContent = !weekPlanned.length ? 'Nessun allenamento pianificato'
+        : !ready ? `Pianificati ${plannedDays}/7 giorni`
+        : `${weekDone.length} / ${runPlanned.length} allenamenti`;
 
     const pctEl = document.getElementById('ring-pct');
     if (pctEl) pctEl.textContent = pct == null ? '--' : `${Math.round(pct * 100)}%`;
@@ -816,7 +870,7 @@ function updateWeeklyStats(dates, planned, imported) {
     renderNextRace();
 }
 
-// Riquadro "Prossima Gara" nella card in alto (le gare si gestiscono nel Profilo)
+// Riquadro "Prossima gara" nella card in alto (le gare si gestiscono nel Profilo)
 function renderNextRace() {
     const box = document.querySelector('.race-countdown');
     if (!box) return;
@@ -827,20 +881,20 @@ function renderNextRace() {
     box.style.cursor = 'pointer';
 
     if (!race) {
-        box.innerHTML = `<div><small>Prossima Gara</small><strong>Nessuna Gara</strong></div>
-            <div class="race-right"><small>Aggiungila Nel Profilo</small></div>`;
+        box.innerHTML = `<div><small>Prossima gara</small><strong>Nessuna gara</strong></div>
+            <div class="race-right"><small>Aggiungila nel profilo</small></div>`;
         return;
     }
     const days = Math.round((parseLocalDate(race.date) - parseLocalDate(today)) / 86400000);
     const est = estimateRace(race.dist_km);
     box.innerHTML = `
         <div>
-            <small>Prossima Gara</small>
+            <small>Prossima gara</small>
             <strong>${race.name ? esc(titleCase(race.name)) + ' · ' : ''}${fmtDist(race.dist_km)}</strong>
             <small>${fmtDateShort(race.date)}</small>
         </div>
         <div class="race-right">
-            <strong>${days === 0 ? 'Oggi!' : days === 1 ? 'Domani' : `Tra ${days} Giorni`}</strong>
+            <strong>${days === 0 ? 'Oggi!' : days === 1 ? 'Domani' : `Tra ${days} giorni`}</strong>
             <small>${est ? 'Stima ' + fmtDuration(est.time) : 'Stima --'}</small>
         </div>`;
 }
@@ -884,14 +938,14 @@ function renderRecapTab(dates, planned, imported) {
                 ${statusChip('in-progress', 'Spostato', 'chip-moved')}
             </div>
             <select onchange="setRecapFilter('weeks', this.value === 'all' ? 'all' : +this.value)">
-                <option value="4" ${recapFilter.weeks === 4 ? 'selected' : ''}>Ultime 4 Settimane</option>
-                <option value="12" ${recapFilter.weeks === 12 ? 'selected' : ''}>Ultime 12 Settimane</option>
+                <option value="4" ${recapFilter.weeks === 4 ? 'selected' : ''}>Ultime 4 settimane</option>
+                <option value="12" ${recapFilter.weeks === 12 ? 'selected' : ''}>Ultime 12 settimane</option>
                 <option value="all" ${recapFilter.weeks === 'all' ? 'selected' : ''}>Tutto</option>
             </select>
         </div>`;
 
     if (!weeks.length) {
-        pastHtml(html + '<p style="color:var(--text-muted)">Nessuna Corsa Salvata Nello Storico.</p>');
+        pastHtml(html + '<p style="color:var(--text-muted)">Nessuna corsa salvata nello storico.</p>');
         return;
     }
 
@@ -927,11 +981,11 @@ function renderRecapTab(dates, planned, imported) {
                     </div>
                     <div class="recap-week-km">
                         <strong style="color:var(--green)">${fmtNum(wDone)}</strong> / ${fmtNum(wPlanKm)} km
-                        <small>${wExec.filter(e => e.status === 'done').length}/${wPlanned.length} Sessioni</small>
+                        <small>${wExec.filter(e => e.status === 'done').length}/${wPlanned.length} sessioni</small>
                     </div>
                 </div>
                 ${c ? `<div class="cmp-bar"><div style="width:${Math.min(c.pct, 100)}%; background:${c.color}"></div></div>` : ''}
-                ${incr != null && incr > 10 ? `<p class="calc-warning">↑ +${incr}% Km Rispetto Alla Settimana Precedente (Consiglio: Massimo +10%).</p>` : ''}
+                ${incr != null && incr > 10 ? `<p class="calc-warning">↑ +${incr}% km rispetto alla settimana precedente (consiglio: massimo +10%).</p>` : ''}
                 ${shown.length ? shown.map(e => {
                     const st = STATUS[e.status] || STATUS.done;
                     return `
@@ -942,7 +996,7 @@ function renderRecapTab(dates, planned, imported) {
                         </div>
                         ${e.status === 'done' ? `<span style="color:var(--green); font-weight:bold;">${fmtNum(e.dist || 0, 2)} km</span>` : `<span class="tag-pill ${st.tag}">${st.label}</span>`}
                     </div>`;
-                }).join('') : '<p class="empty-steps">Nessuna Corsa Con Questo Filtro.</p>'}
+                }).join('') : '<p class="empty-steps">Nessuna corsa con questo filtro.</p>'}
             </div>`;
     });
     pastHtml(html);
@@ -953,7 +1007,15 @@ function pastHtml(h) { document.getElementById('past-imported-list').innerHTML =
    BUILDER DEI PASSI (modale pianificazione)
    ===================================================================== */
 
-const ZONE_OPTIONS = ['', 'Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+// Zone frequenza: solo sigle, unite a due a due
+const ZONE_OPTIONS = ['Z1 · Z2', 'Z3 · Z4', 'Z5'];
+// Allenamenti salvati prima con una zona sola (es. "Z2") → opzione corrispondente
+function zoneNorm(z) {
+    if (!z) return '';
+    if (ZONE_OPTIONS.includes(z)) return z;
+    const n = (String(z).match(/\d/) || [''])[0];
+    return n === '1' || n === '2' ? 'Z1 · Z2' : n === '3' || n === '4' ? 'Z3 · Z4' : n === '5' ? 'Z5' : z;
+}
 
 function stepValueText(s) {
     if (s.mode === 'dist' && s.dist_km != null) return fmtDist(s.dist_km);
@@ -969,48 +1031,75 @@ function createStepEl(step) {
     const div = document.createElement('div');
     div.className = 'builder-step';
     div.dataset.type = step.type;
-    const mode = t.timeOnly ? 'time' : (step.mode || 'time');
-    const hasDur = t.timeOnly || mode !== 'open';
-    const hasPace = !t.timeOnly && step.pace_lo != null;
-    const hasZone = !t.timeOnly && !!step.zone;
+    const mode = step.mode || 'time';
+    const sp = stepPace(step);
+    const hasZone = !!step.zone;
     const x = f => `<button type="button" class="bs-x-field" data-field="${f}" title="Togli">×</button>`;
     div.innerHTML = `
         <div class="bs-head">
-            <span class="bs-drag" title="Tieni Premuto E Trascina"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="bs-drag" title="Tieni premuto e trascina"><i class="fa-solid fa-grip-vertical"></i></span>
             <i class="fa-solid ${t.icon}" style="color:${t.color}"></i>
             <span class="builder-active-label">${t.label}</span>
+            <button type="button" class="btn-circle-muted bs-copy" title="Duplica"><i class="fa-regular fa-copy"></i></button>
             <button type="button" class="btn-circle-red bs-remove" title="Rimuovi"><i class="fa-solid fa-minus"></i></button>
         </div>
         <div class="bs-fields">
-            <span class="bs-field f-dur" ${hasDur ? '' : 'hidden'}>
-                ${t.timeOnly ? '<span class="bs-fixed">Tempo</span>' : `
-                <select class="bs-mode">
-                    <option value="dist" ${mode === 'dist' ? 'selected' : ''}>Distanza</option>
-                    <option value="time" ${mode !== 'dist' ? 'selected' : ''}>Tempo</option>
-                </select>`}
-                <input type="text" class="builder-active-input bs-value" value="${esc(stepValueText(step))}">
-                ${t.timeOnly ? '' : x('dur')}
+            <span class="bs-field f-time" ${mode === 'time' ? '' : 'hidden'}>
+                <span class="bs-flabel">Durata</span>
+                <input type="text" class="builder-active-input bs-value bs-time" value="${mode === 'time' && step.time_s != null ? esc(fmtDuration(step.time_s)) : ''}">
+                ${x('time')}
             </span>
-            ${t.timeOnly ? '' : `
-            <span class="bs-field f-pace" ${hasPace ? '' : 'hidden'}>
-                <input type="text" class="builder-active-input bs-pace" placeholder="Pace 6:20" value="${esc(fmtPace(step.pace_lo, step.pace_hi))}">
+            <span class="bs-field f-dist" ${mode === 'dist' ? '' : 'hidden'}>
+                <span class="bs-flabel">Distanza</span>
+                <input type="text" class="builder-active-input bs-value bs-dist" value="${mode === 'dist' && step.dist_km != null ? esc(fmtDist(step.dist_km)) : ''}">
+                ${x('dist')}
+            </span>
+            <span class="bs-field f-pace" ${sp.val != null ? '' : 'hidden'}>
+                <span class="bs-flabel">Pace</span>
+                <input type="text" class="builder-active-input bs-pace" placeholder="6' 20&quot;" value="${esc(fmtPaceQ(sp.val))}">
                 ${x('pace')}
             </span>
+            <span class="bs-field f-slow" ${sp.slow != null ? '' : 'hidden'}>
+                <span class="bs-flabel">Ritmo più lento</span>
+                <input type="text" class="builder-active-input bs-pace-slow" placeholder="6' 40&quot;" value="${esc(fmtPaceQ(sp.slow))}">
+                ${x('slow')}
+            </span>
+            <span class="bs-field f-fast" ${sp.fast != null ? '' : 'hidden'}>
+                <span class="bs-flabel">Ritmo più veloce</span>
+                <input type="text" class="builder-active-input bs-pace-fast" placeholder="6' 20&quot;" value="${esc(fmtPaceQ(sp.fast))}">
+                ${x('fast')}
+            </span>
             <span class="bs-field f-zone" ${hasZone ? '' : 'hidden'}>
-                <select class="bs-zone">${ZONE_OPTIONS.filter(Boolean).map(z => `<option value="${z}" ${(step.zone || 'Z2') === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+                <select class="bs-zone">${ZONE_OPTIONS.map(z => `<option value="${z}" ${(zoneNorm(step.zone) || ZONE_OPTIONS[0]) === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
                 ${x('zone')}
-            </span>`}
+            </span>
         </div>
-        ${t.timeOnly ? '' : `
         <div class="bs-add-fields">
-            <button type="button" class="bs-add-field" data-field="dur">+ Durata</button>
+            <button type="button" class="bs-add-field" data-field="time">+ Durata</button>
+            <button type="button" class="bs-add-field" data-field="dist">+ Distanza</button>
             <button type="button" class="bs-add-field" data-field="pace">+ Pace</button>
+            <button type="button" class="bs-add-field" data-field="slow">+ Ritmo più lento</button>
+            <button type="button" class="bs-add-field" data-field="fast">+ Ritmo più veloce</button>
             <button type="button" class="bs-add-field" data-field="zone">+ ZF</button>
-        </div>`}
+        </div>
         <small class="bs-hint"></small>`;
     updateStepPlaceholder(div);
     updateFieldButtons(div);
     return div;
+}
+
+// Pace di un passo: "Pace" (valore singolo) oppure intervallo "Ritmo più lento" / "Ritmo più veloce".
+// Se è presente almeno uno dei due ritmi dell'intervallo, vale l'intervallo.
+function stepFieldOn(el, f) { const x = el.querySelector(':scope > .bs-fields > .f-' + f); return !!x && !x.hidden; }
+function readStepPace(el) {
+    const val = stepFieldOn(el, 'pace') ? (parsePace(el.querySelector('.bs-pace').value)?.lo ?? null) : null;
+    const slow = stepFieldOn(el, 'slow') ? parsePaceOne(el.querySelector('.bs-pace-slow').value) : null;
+    const fast = stepFieldOn(el, 'fast') ? parsePaceOne(el.querySelector('.bs-pace-fast').value) : null;
+    return { val, slow, fast };
+}
+function paceRawText(el) {
+    return ['pace', 'slow', 'fast'].filter(f => stepFieldOn(el, f))
+        .map(f => el.querySelector(f === 'pace' ? '.bs-pace' : f === 'slow' ? '.bs-pace-slow' : '.bs-pace-fast').value).join('').trim();
 }
 
 // Mostra "+ Durata / + Pace / + ZF" solo per le impostazioni non ancora presenti
@@ -1021,11 +1110,14 @@ function updateFieldButtons(stepEl) {
     });
 }
 function toggleStepField(stepEl, field, show) {
-    const f = stepEl.querySelector('.f-' + field);
+    const f = stepEl.querySelector(':scope > .bs-fields > .f-' + field);
     if (!f) return;
     f.hidden = !show;
+    // Durata e distanza sono alternative: aggiungendone una, l'altra si toglie
+    const other = { time: 'dist', dist: 'time' }[field];
+    if (show && other) { const o = stepEl.querySelector(':scope > .bs-fields > .f-' + other); if (o) { o.hidden = true; o.querySelector('input').value = ''; } }
     if (show) {
-        const input = f.querySelector('input, select');
+        const input = f.querySelector('input:not([hidden])') || f.querySelector('select');
         if (input) { input.focus(); input.classList.add('bs-flash'); setTimeout(() => input.classList.remove('bs-flash'), 1000); }
     }
     updateFieldButtons(stepEl);
@@ -1038,16 +1130,17 @@ function createBlockEl(block) {
     div.dataset.type = 'repeat';
     div.innerHTML = `
         <div class="bs-head">
-            <span class="bs-drag" title="Tieni Premuto E Trascina"><i class="fa-solid fa-grip-vertical"></i></span>
+            <span class="bs-drag" title="Tieni premuto e trascina"><i class="fa-solid fa-grip-vertical"></i></span>
             <i class="fa-solid fa-repeat" style="color:var(--pink)"></i>
             <span class="builder-active-label">Ripetizioni</span>
-            <input type="number" min="1" class="builder-active-input bs-reps" value="${block.reps || 1}">
+            <input type="number" min="1" class="builder-active-input bs-reps" placeholder="N°" value="${block.reps || ''}">
             <span class="bs-x">Volte</span>
+            <button type="button" class="btn-circle-muted bs-copy" title="Duplica"><i class="fa-regular fa-copy"></i></button>
             <button type="button" class="btn-circle-red bs-remove" title="Rimuovi"><i class="fa-solid fa-minus"></i></button>
         </div>
         <div class="bb-inner"></div>
         <div class="add-pills-grid bb-add">
-            <button type="button" class="btn-add-pill" data-add="work">+ Corsa</button>
+            <button type="button" class="btn-add-pill" data-add="work">+ Esercizio</button>
             <button type="button" class="btn-add-pill" data-add="recovery">+ Recupero</button>
             <button type="button" class="btn-add-pill" data-add="rest">+ Riposo</button>
         </div>
@@ -1087,7 +1180,7 @@ function makeSortable(container) {
         Sortable.create(container, {
             group: 'builder-steps',
             handle: '.bs-head',
-            filter: '.bs-remove, .bs-reps',      // il "−" e il numero di ripetizioni restano cliccabili
+            filter: '.bs-remove, .bs-copy, .bs-reps',      // il "−" e il numero di ripetizioni restano cliccabili
             preventOnFilter: false,
             draggable: '.builder-step, .builder-block',
             animation: 180,
@@ -1108,26 +1201,24 @@ function makeSortable(container) {
 
 function updateStepPlaceholder(el) {
     const type = el.dataset.type;
-    const mode = el.querySelector('.bs-mode')?.value || 'time';
-    const input = el.querySelector('.bs-value');
-    if (!input) return;
-    input.placeholder = mode === 'dist' ? 'es. 2 km o 300 m'
-        : (STEP_TYPES[type].plain === 'sec' ? 'es. 90 (sec) o 1:30' : 'es. 15 (min) o 15:00');
+    const d = el.querySelector('.bs-dist'), t = el.querySelector('.bs-time');
+    if (d) d.placeholder = 'es. 2 km o 300 m';
+    if (t) t.placeholder = STEP_TYPES[type].plain === 'sec' ? 'es. 90 (sec) o 1:30' : 'es. 15 (min) o 15:00';
 }
 
 function readStepEl(el) {
     const type = el.dataset.type;
     const t = STEP_TYPES[type];
     const on = f => { const x = el.querySelector(':scope > .bs-fields > .f-' + f); return !!x && !x.hidden; };
-    const mode = t.timeOnly ? 'time' : (on('dur') ? (el.querySelector('.bs-mode')?.value || 'time') : 'open');
-    const raw = el.querySelector('.bs-value').value;
-    const pace = !t.timeOnly && on('pace') ? parsePace(el.querySelector('.bs-pace').value) : null;
+    const mode = on('dist') ? 'dist' : on('time') ? 'time' : 'open';
+    const raw = mode === 'open' ? '' : el.querySelector(':scope > .bs-fields .bs-' + mode).value;
+    const pace = readStepPace(el);
     return {
         type, mode,
         dist_km: mode === 'dist' ? parseDistanceKm(raw) : null,
         time_s: mode === 'time' ? parseDuration(raw, t.plain) : null,
-        pace_lo: pace?.lo ?? null, pace_hi: pace?.hi ?? null,
-        zone: !t.timeOnly && on('zone') ? (el.querySelector('.bs-zone').value || '') : ''
+        pace_val: pace.val, pace_slow: pace.slow, pace_fast: pace.fast,
+        zone: on('zone') ? (el.querySelector(':scope > .bs-fields .bs-zone').value || '') : ''
     };
 }
 
@@ -1151,20 +1242,36 @@ function renderBuilder(steps = []) {
 }
 
 // Chiamata dai pulsanti "+ ..." dell'HTML
+// Passo vuoto: nessuna impostazione di default, si aggiungono con i pulsanti +
+const EMPTY = type => ({ type, mode: 'open', dist_km: null, time_s: null, pace_val: null, pace_slow: null, pace_fast: null, zone: '' });
+
+// Impostazioni aggiungibili dai pulsanti in basso (vanno sul passo selezionato)
+const SETTING_PILLS = { 'Durata': 'time', 'Distanza': 'dist', 'Pace': 'pace', 'Ritmo più lento': 'slow', 'Ritmo più veloce': 'fast', 'ZF': 'zone', 'ZF – Zona frequenza': 'zone' };
+
+function setActiveStep(stepEl) {
+    document.querySelectorAll('#active-builder-blocks .builder-step.is-active').forEach(el => el.classList.remove('is-active'));
+    if (stepEl) stepEl.classList.add('is-active');
+}
+
+// Chiamata dai pulsanti "+ ..." in basso
 function addBuilderBlock(keyName) {
     const c = document.getElementById('active-builder-blocks');
     const type = PILL_TO_TYPE[keyName];
     if (type === 'repeat') {
-        c.appendChild(createBlockEl(R(10, [S('work', { dist: 0.4 }), S('recovery', { time: 90 })])));
+        const el = createBlockEl(R('', []));
+        c.appendChild(el);
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     } else if (type) {
-        c.appendChild(createStepEl(S(type, type === 'rest' || type === 'recovery' ? { time: 90 } : { time: 600 })));
-    } else {
-        // "+ Pace" e "+ ZF": aggiunge l'impostazione all'ultimo passo (che non sia un Riposo)
-        const steps = [...c.querySelectorAll('.builder-step')].filter(el => el.dataset.type !== 'rest');
-        if (!steps.length) { c.appendChild(createStepEl(S('work', { time: 600 }))); return addBuilderBlock(keyName); }
-        const last = steps[steps.length - 1];
-        last.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        toggleStepField(last, keyName === 'Pace' ? 'pace' : 'zone', true);
+        const el = createStepEl(EMPTY(type));
+        c.appendChild(el);
+        setActiveStep(el);
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } else if (SETTING_PILLS[keyName]) {
+        // Impostazione: va sul passo selezionato (bordo rosa), altrimenti sull'ultimo
+        const target = c.querySelector('.builder-step.is-active') || [...c.querySelectorAll('.builder-step')].pop();
+        if (!target) { alert('Aggiungi prima un passo (es. + Riscaldamento), poi le sue impostazioni.'); return; }
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        toggleStepField(target, SETTING_PILLS[keyName], true);
     }
     recalcBuilder();
 }
@@ -1173,20 +1280,28 @@ function updateHints() {
     document.querySelectorAll('#active-builder-blocks .builder-step').forEach(el => {
         const s = readStepEl(el);
         const hint = el.querySelector('.bs-hint');
-        const raw = s.mode === 'open' ? '' : el.querySelector('.bs-value').value.trim();
-        const paceRaw = s.pace_lo != null || (el.querySelector('.f-pace') && !el.querySelector('.f-pace').hidden) ? el.querySelector('.bs-pace').value.trim() : '';
+        const raw = s.mode === 'open' ? '' : el.querySelector(':scope > .bs-fields .bs-' + s.mode).value.trim();
+        const paceRaw = paceRawText(el);
         const msgs = [];
-        if (s.mode === 'open') msgs.push('Aperto: Passi Al Successivo A Mano (Lap)');
+        const empty = s.mode === 'open' && !hasPace(s) && !s.zone && [...el.querySelectorAll(':scope > .bs-fields > .bs-field')].every(f => f.hidden);
+        if (empty) msgs.push('Vuoto: aggiungi le impostazioni con i pulsanti +');
+        else if (s.mode === 'open') msgs.push('Senza durata: passi al successivo a mano (Lap)');
         if (raw) {
-            if (s.mode === 'dist') msgs.push(s.dist_km != null ? `= ${fmtDist(s.dist_km)}` : '⚠ Distanza Non Valida');
-            else msgs.push(s.time_s != null ? `= ${fmtDurationWords(s.time_s)}` : '⚠ Tempo Non Valido');
+            if (s.mode === 'dist') msgs.push(s.dist_km != null ? `= ${fmtDist(s.dist_km)}` : '⚠ Distanza non valida');
+            else msgs.push(s.time_s != null ? `= ${fmtDurationWords(s.time_s)}` : '⚠ Tempo non valido');
         }
-        if (paceRaw) msgs.push(s.pace_lo ? `Pace ${fmtPace(s.pace_lo, s.pace_hi)} /km` : '⚠ Pace Non Valido (es. 6:20)');
+        if (paceRaw) {
+            const bad = ['pace', 'slow', 'fast'].some(f => stepFieldOn(el, f) &&
+                el.querySelector(f === 'pace' ? '.bs-pace' : f === 'slow' ? '.bs-pace-slow' : '.bs-pace-fast').value.trim() &&
+                (f === 'pace' ? s.pace_val : f === 'slow' ? s.pace_slow : s.pace_fast) == null);
+            msgs.push(bad ? `⚠ Pace non valido (es. 6' 20")` : describePace(s));
+        }
         const c = calcStep(s);
-        if (s.type !== 'rest') {
+        {
             if (s.mode === 'dist' && c.time) msgs.push(`≈ ${fmtDuration(c.time)}`);
             if (s.mode === 'time' && c.dist) msgs.push(`≈ ${fmtDist(c.dist)}`);
-            if (s.mode === 'time' && c.dist == null) msgs.push('Aggiungi Il Pace Per Calcolare I Km');
+            if (s.mode === 'time' && c.dist == null) msgs.push('Aggiungi il pace per calcolare i km');
+            if (s.type === 'rest' && s.mode === 'time' && !hasPace(s) && raw) msgs.push('Fermo');
             if (s.zone) msgs.push(s.zone);
         }
         hint.textContent = msgs.join(' · ');
@@ -1195,7 +1310,7 @@ function updateHints() {
     document.querySelectorAll('#active-builder-blocks .builder-block').forEach(el => {
         const b = { type: 'repeat', reps: Math.max(1, parseInt(el.querySelector('.bs-reps').value) || 1), steps: [...el.querySelector('.bb-inner').children].map(readStepEl) };
         const t = calcSteps([b]);
-        el.querySelector(':scope > .bs-hint').textContent = `Totale Blocco: ${fmtDist(t.dist) || '0 km'} · ${fmtDuration(t.time)}`;
+        el.querySelector(':scope > .bs-hint').textContent = `Totale blocco: ${fmtDist(t.dist) || '0 km'} · ${fmtDuration(t.time)}`;
     });
 }
 
@@ -1224,7 +1339,10 @@ function normalizeField(input) {
         if (s.mode === 'time' && s.time_s != null) input.value = fmtDuration(s.time_s);
     } else if (input.classList.contains('bs-pace')) {
         const p = parsePace(input.value);
-        if (p) input.value = fmtPace(p.lo, p.hi);
+        if (p) input.value = fmtPaceStep(p.lo, p.hi);
+    } else if (input.classList.contains('bs-pace-slow') || input.classList.contains('bs-pace-fast')) {
+        const v = parsePaceOne(input.value);
+        if (v != null) input.value = fmtPaceQ(v);
     } else if (input.id === 'plan-summary-time' || input.id === 'exec-time') {
         const t = parseDuration(input.value, 'min');
         if (t != null) input.value = fmtDuration(t);
@@ -1235,12 +1353,29 @@ function normalizeField(input) {
 }
 
 function handleTemplateSelect(val) {
-    if (!val || val === 'CUSTOM') { if (val === 'CUSTOM') renderBuilder([]); return; }
+    if (!val) return;
     const t = templatesData[val];
     if (!t) return;
     document.getElementById('plan-title').value = t.title;
     document.getElementById('plan-notes').value = t.notes || '';
-    renderBuilder(JSON.parse(JSON.stringify(t.steps)));
+    // Struttura vuota per tutti i tipi di corsa, tranne la corsa ripetuta
+    renderBuilder(val === 'it' ? JSON.parse(JSON.stringify(t.steps)) : []);
+}
+
+// Duplica un passo o un blocco Ripetizioni (con tutto quello che contiene) subito sotto
+function duplicateBuilderItem(el) {
+    const copy = el.cloneNode(true);
+    const src = el.querySelectorAll('input, select'), dst = copy.querySelectorAll('input, select');
+    src.forEach((f, i) => { dst[i].value = f.value; });
+    copy.classList.remove('is-active', 'bs-chosen', 'bs-ghost');
+    copy.querySelectorAll('.bs-flash').forEach(x => x.classList.remove('bs-flash'));
+    copy.querySelectorAll('.is-active').forEach(x => x.classList.remove('is-active'));
+    copy.querySelectorAll('[data-sortable]').forEach(x => { delete x.dataset.sortable; makeSortable(x); });
+    el.after(copy);
+    if (copy.classList.contains('builder-step')) setActiveStep(copy);
+    copy.classList.add('bs-copied');
+    setTimeout(() => copy.classList.remove('bs-copied'), 900);
+    recalcBuilder();
 }
 
 /* =====================================================================
@@ -1248,20 +1383,56 @@ function handleTemplateSelect(val) {
    ===================================================================== */
 
 function initUI() {
-    // Nuovi modelli nel menu
+    // Tipo di corsa: solo questi modelli, in ordine alfabetico
     const sel = document.getElementById('workout-template-select');
-    const custom = sel.querySelector('option[value="CUSTOM"]');
-    TEMPLATE_MENU.forEach(([v, l]) => {
-        if (!sel.querySelector(`option[value="${v}"]`)) {
-            const o = document.createElement('option'); o.value = v; o.textContent = l;
-            sel.insertBefore(o, custom);
-        }
+    sel.innerHTML = '<option value="">Seleziona il tipo di corsa</option>' +
+        TEMPLATE_MENU.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+    const selLabel = sel.previousElementSibling;
+    if (selLabel && selLabel.tagName === 'LABEL') selLabel.textContent = 'Tipo di corsa';
+    const titleLabel = document.getElementById('plan-title').previousElementSibling;
+    if (titleLabel && titleLabel.tagName === 'LABEL') titleLabel.textContent = 'Nome allenamento';
+    document.getElementById('plan-title').placeholder = 'Es. corsa lenta';
+
+    // Pulsanti della struttura: "Esercizio" al posto di "Corsa", "ZF" al posto di "ZF – Zona frequenza"
+    document.querySelectorAll('#plan-modal .btn-add-pill').forEach(btn => {
+        const t = btn.textContent.trim();
+        if (t === '+ Corsa / Lavoro' || t === '+ Corsa') btn.textContent = '+ Esercizio';
+        if (t.startsWith('+ ZF')) btn.textContent = '+ ZF';
     });
 
-    // "+ Corsa / Lavoro" → "+ Corsa"
-    document.querySelectorAll('#plan-modal .btn-add-pill').forEach(btn => {
-        if (btn.textContent.includes('Corsa / Lavoro')) btn.textContent = '+ Corsa';
-    });
+    // Due gruppi di pulsanti sotto la struttura: Passi e impostazioni (per il passo selezionato)
+    const pillsGrid = document.querySelector('#plan-modal .optional-fields-box > div:last-child .add-pills-grid');
+    if (pillsGrid && !document.getElementById('settings-pills')) {
+        pillsGrid.querySelectorAll('.btn-add-pill').forEach(btn => {
+            const t = btn.textContent.trim();
+            if (t === '+ Pace' || t === '+ ZF') btn.remove();
+        });
+        pillsGrid.insertAdjacentHTML('beforebegin', '<span class="pills-label">Aggiungi passo</span>');
+        pillsGrid.insertAdjacentHTML('afterend', `
+            <span class="pills-label">Aggiungi impostazione al passo selezionato</span>
+            <div id="settings-pills" class="add-pills-grid">
+                ${Object.keys(SETTING_PILLS).filter(k => !k.includes('–')).map(k =>
+                    `<button type="button" class="btn-add-pill" onclick="addBuilderBlock('${k}')">+ ${k}</button>`).join('')}
+            </div>`);
+    }
+
+    // Stato esecuzione: icone colorate (come nel calendario) al posto del menu a tendina
+    const stSel = document.getElementById('exec-status');
+    if (stSel && !document.getElementById('status-chips')) {
+        [...stSel.options].forEach(o => { if (STATUS[o.value]) o.textContent = STATUS[o.value].label; });
+        stSel.style.display = 'none';
+        stSel.insertAdjacentHTML('afterend', `<div id="status-chips" class="status-chips">${
+            Object.entries(STATUS).map(([k, st]) =>
+                `<button type="button" class="status-chip" data-status="${k}" style="--st:${st.color}">
+                    <i class="fa-solid ${st.icon}"></i><span>${st.label}</span>
+                </button>`).join('')}</div>`);
+        document.getElementById('status-chips').addEventListener('click', e => {
+            const chip = e.target.closest('.status-chip');
+            if (!chip) return;
+            stSel.value = chip.dataset.status;
+            stSel.dispatchEvent(new Event('change'));
+        });
+    }
 
     // Elimina allenamento: solo l'icona "−"
     const del = document.getElementById('btn-delete-plan');
@@ -1285,6 +1456,9 @@ function initUI() {
     // Profilo: gare in programma e record personali + finestra per inserirli
     initGoalsUI();
 
+    // Tutte le etichette fisse: maiuscola solo all'inizio
+    sentenceCaseStatic();
+
     // Schermata Pace: scorciatoie distanze, calcolo automatico e sezioni extra
     initCalculatorExtras();
 
@@ -1292,17 +1466,22 @@ function initUI() {
     const b = document.getElementById('active-builder-blocks');
     b.addEventListener('input', recalcBuilder);
     b.addEventListener('change', e => {
-        if (e.target.classList.contains('bs-mode')) {
-            const stepEl = e.target.closest('.builder-step');
-            stepEl.querySelector('.bs-value').value = '';
-            updateStepPlaceholder(stepEl);
-        }
         recalcBuilder();
+    });
+    b.addEventListener('pointerdown', e => {
+        const st = e.target.closest('.builder-step');
+        if (st) setActiveStep(st);
+    });
+    b.addEventListener('focusin', e => {
+        const st = e.target.closest('.builder-step');
+        if (st) setActiveStep(st);
     });
     b.addEventListener('focusout', e => { if (e.target.matches('input')) { normalizeField(e.target); recalcBuilder(); } });
     b.addEventListener('click', e => {
         const rm = e.target.closest('.bs-remove');
         if (rm) { rm.closest('.builder-step, .builder-block').remove(); recalcBuilder(); return; }
+        const cp = e.target.closest('.bs-copy');
+        if (cp) { duplicateBuilderItem(cp.closest('.builder-step, .builder-block')); return; }
         const xf = e.target.closest('.bs-x-field');
         if (xf) { toggleStepField(xf.closest('.builder-step'), xf.dataset.field, false); return; }
         const af = e.target.closest('.bs-add-field');
@@ -1310,8 +1489,9 @@ function initUI() {
         const add = e.target.closest('[data-add]');
         if (add) {
             const type = add.dataset.add;
-            add.closest('.builder-block').querySelector('.bb-inner')
-                .appendChild(createStepEl(S(type, type === 'work' ? { dist: 0.4 } : { time: 90 })));
+            const newStep = createStepEl(EMPTY(type));
+            add.closest('.builder-block').querySelector('.bb-inner').appendChild(newStep);
+            setActiveStep(newStep); // le impostazioni aggiunte dopo vanno su questo passo
             recalcBuilder();
         }
     });
@@ -1331,6 +1511,15 @@ function initUI() {
         h.className = 'bs-hint';
         timeEl.closest('div').parentElement.insertAdjacentElement('afterend', h);
     }
+    // Risultato: riga "Previsto" in alto e risultato per passo (tutto facoltativo)
+    const execForm = document.getElementById('execution-form');
+    if (!document.getElementById('exec-plan-ref')) {
+        execForm.insertAdjacentHTML('afterbegin', '<div id="exec-plan-ref" class="res-plan" hidden></div>');
+        labelOf('exec-notes').insertAdjacentHTML('beforebegin', '<div id="exec-steps"></div>');
+    }
+    document.getElementById('exec-dist').removeAttribute('required');
+    const stepsBox = document.getElementById('exec-steps');
+    stepsBox.addEventListener('focusout', e => { if (e.target.classList.contains('res-in')) normalizeResultInput(e.target); });
 }
 
 /* =====================================================================
@@ -1345,7 +1534,7 @@ function openPlanModal(id = null) {
     if (id) {
         const item = allPlannedWorkouts.find(w => w.id == id);
         if (!item) return;
-        document.getElementById('modal-plan-title').innerText = 'Modifica Allenamento';
+        document.getElementById('modal-plan-title').innerText = 'Modifica allenamento';
         document.getElementById('plan-id').value = item.id;
         document.getElementById('plan-date').value = item.date || selectedDateStr;
         document.getElementById('plan-title').value = item.title || '';
@@ -1356,11 +1545,11 @@ function openPlanModal(id = null) {
         document.getElementById('plan-summary-time').value = item.summary_time || '';
         renderBuilder(JSON.parse(JSON.stringify(sum.steps || [])));
     } else {
-        document.getElementById('modal-plan-title').innerText = 'Nuovo Allenamento';
+        document.getElementById('modal-plan-title').innerText = 'Nuovo allenamento';
         document.getElementById('plan-form').reset();
         document.getElementById('plan-id').value = '';
         document.getElementById('plan-date').value = selectedDateStr;
-        renderBuilder([S('warmup', { time: 600, zone: 'Z2' }), S('work', { time: 1800, zone: 'Z2' }), S('cooldown', { time: 300, zone: 'Z1' })]);
+        renderBuilder([]);
     }
 }
 function closePlanModal() { document.getElementById('plan-modal').style.display = 'none'; }
@@ -1428,6 +1617,7 @@ function showField(id, show) {
 }
 
 function applyStatusVisibility(status) {
+    document.querySelectorAll('#status-chips .status-chip').forEach(c => c.classList.toggle('active', c.dataset.status === status));
     const done = status === 'done', moved = status === 'in-progress';
     document.querySelector('#upload-modal .gpx-drop-zone').style.display = done ? '' : 'none';
     showField('exec-title', done);
@@ -1436,15 +1626,19 @@ function applyStatusVisibility(status) {
     document.getElementById('exec-dist').closest('div').parentElement.style.display = done ? 'grid' : 'none';
     document.getElementById('exec-pace-hint').style.display = done ? '' : 'none';
 
-    document.getElementById('exec-dist').required = done;
+    document.getElementById('exec-dist').required = false; // facoltativa
+    const ref = document.getElementById('exec-plan-ref');
+    if (ref) ref.hidden = !done || !ref.innerHTML;
+    const stepsBox = document.getElementById('exec-steps');
+    if (stepsBox) stepsBox.style.display = done ? '' : 'none';
     document.getElementById('exec-title').required = done;
     document.getElementById('exec-date').required = done || moved;
 
-    labelOf('exec-date').textContent = moved ? 'Nuova Data' : 'Data Esecuzione';
-    labelOf('exec-notes').textContent = status === 'to-fix' ? 'Motivo (Perché Hai Saltato)' : 'Note';
-    document.getElementById('exec-notes').placeholder = status === 'to-fix' ? 'Es. Stanchezza, Pioggia, Impegno Di Lavoro...' : 'Sensazioni, Meteo...';
+    labelOf('exec-date').textContent = moved ? 'Nuova data' : 'Data esecuzione';
+    labelOf('exec-notes').textContent = status === 'to-fix' ? 'Motivo (perché hai saltato)' : 'Note';
+    document.getElementById('exec-notes').placeholder = status === 'to-fix' ? 'Es. stanchezza, pioggia, impegno di lavoro...' : 'Sensazioni, meteo...';
     const submit = document.querySelector('#execution-form button[type="submit"]');
-    submit.textContent = done ? 'Salva Esecuzione' : (moved ? 'Sposta Allenamento' : 'Segna Come Saltato');
+    submit.textContent = done ? 'Salva esecuzione' : (moved ? 'Sposta allenamento' : 'Segna come saltato');
 }
 
 function updateExecHint() {
@@ -1452,8 +1646,8 @@ function updateExecHint() {
     const t = parseDuration(document.getElementById('exec-time').value, 'min');
     const parts = [];
     if (t != null && document.getElementById('exec-time').value.trim()) parts.push(`Tempo = ${fmtDurationWords(t)}`);
-    if (d > 0 && t) parts.push(`Pace Medio ${fmtPaceSec(t / d)} /km`);
-    if (gpxData?.hr) parts.push(`FC Media Dal GPX ${gpxData.hr} bpm`);
+    if (d > 0 && t) parts.push(`Pace medio ${fmtPaceSec(t / d)} /km`);
+    if (gpxData?.hr) parts.push(`FC media dal GPX ${gpxData.hr} bpm`);
     document.getElementById('exec-pace-hint').textContent = parts.join(' · ');
 }
 
@@ -1473,7 +1667,7 @@ function openUploadModal(planId = null, execId = null) {
     const exec = execId ? allImportedWorkouts.find(w => w.id == execId) : null;
     const plan = planId ? allPlannedWorkouts.find(w => w.id == planId) : (exec ? findPlanForExec(exec) : null);
     document.getElementById('exec-plan-id').value = plan ? plan.id : '';
-    document.querySelector('#upload-modal h3').textContent = exec ? 'Modifica Esecuzione' : 'Registra Risultato & Stato';
+    document.querySelector('#upload-modal h3').textContent = exec ? 'Modifica esecuzione' : 'Registra risultato e stato';
 
     if (exec) {
         document.getElementById('exec-status').value = exec.status || 'done';
@@ -1489,6 +1683,7 @@ function openUploadModal(planId = null, execId = null) {
         document.getElementById('exec-date').value = plan ? plan.date : selectedDateStr;
         document.getElementById('exec-title').value = plan ? titleCase(plan.title) : '';
     }
+    fillExecFromPlan(plan, exec);
     applyStatusVisibility(document.getElementById('exec-status').value);
     updateExecHint();
     document.getElementById('upload-modal').style.display = 'block';
@@ -1531,6 +1726,124 @@ function calcHaversineDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/* ---------- Risultato che segue l'allenamento pianificato ---------- */
+
+// Righe del risultato: un passo = una riga; nelle ripetizioni una riga per passo interno (media)
+function resultRows(steps) {
+    const rows = [];
+    (steps || []).forEach((s, i) => {
+        if (s.type === 'repeat') {
+            rows.push({ head: true, reps: s.reps });
+            (s.steps || []).forEach((x, j) => rows.push({ key: `${i}.${j}`, step: x, nested: true }));
+        } else rows.push({ key: String(i), step: s });
+    });
+    return rows;
+}
+// Per ogni passo: a distanza → Tempo + Pace; a tempo o aperto → Tempo + Distanza
+function resultSpec(s) {
+    const c = calcStep(s);
+    const t = STEP_TYPES[s.type] || {};
+    if (s.mode === 'dist') return {
+        plain: t.plain === 'sec' || (s.dist_km != null && s.dist_km < 1.5) ? 'sec' : 'min',
+        timePh: c.time ? fmtDuration(c.time) : '--',
+        second: 'pace', secondLabel: 'Pace', secondPh: hasPace(s) ? fmtPaceQ(paceMid(s)) : '--'
+    };
+    return {
+        plain: t.plain || 'min',
+        timePh: s.time_s != null ? fmtDuration(s.time_s) : '--',
+        second: 'dist', secondLabel: 'Distanza', secondPh: c.dist ? fmtDist(c.dist) : '--'
+    };
+}
+function stepPlanText(s) {
+    const parts = [];
+    if (s.mode === 'dist') parts.push(fmtDist(s.dist_km));
+    else if (s.mode === 'time') parts.push(fmtDuration(s.time_s));
+    if (hasPace(s)) parts.push(describePace(s));
+    return parts.join(' · ') || 'Libero';
+}
+function savedStepResults(exec) {
+    const r = exec ? exec.step_results : null;
+    return parseFields(r) || {};
+}
+
+function fillExecFromPlan(plan, exec) {
+    const ref = document.getElementById('exec-plan-ref');
+    const box = document.getElementById('exec-steps');
+    const distEl = document.getElementById('exec-dist'), timeEl = document.getElementById('exec-time');
+    ref.innerHTML = ''; box.innerHTML = '';
+    distEl.placeholder = 'es. 8.00'; timeEl.placeholder = 'es. 45:20 o 45 (min)';
+    if (!plan || isRestDay(plan)) return;
+
+    const sum = planSummary(plan);
+    const zones = [...new Set(JSON.stringify(sum.steps).match(/Z\d/g) || [])].sort();
+    const main = [sum.dist ? fmtDist(sum.dist) : '', sum.time ? fmtDuration(sum.time) : '', sum.pace ? fmtPaceSec(sum.pace) + ' /km' : ''].filter(Boolean).join(' · ');
+    ref.innerHTML = `Previsto: <b>${esc(main || '--')}</b>${zones.length ? ` · ZF ${zones.join(' · ')}` : ''}`;
+    if (sum.dist) distEl.placeholder = sum.dist.toFixed(2);
+    if (sum.time) timeEl.placeholder = fmtDuration(sum.time);
+    // Zona cardio: parte da quella più alta dell'allenamento (solo per un nuovo risultato)
+    if (!exec && zones.length) document.getElementById('exec-hr').value = zones[zones.length - 1];
+
+    const rows = resultRows(sum.steps);
+    if (!rows.length) return;
+    const saved = savedStepResults(exec);
+    box.innerHTML = `<div class="res-steps-title">Risultato per passo <small>· facoltativo</small></div>` + rows.map(r => {
+        if (r.head) return `
+            <div class="res-step"><span class="res-bar" style="background:var(--pink)"></span><div>
+                <div class="res-top"><i class="fa-solid fa-repeat" style="color:var(--pink)"></i>Ripetizioni × ${r.reps}</div>
+                <div class="res-planline">Inserisci la media delle ripetute</div></div></div>`;
+        const s = r.step, t = STEP_TYPES[s.type] || { label: s.type, icon: 'fa-circle', color: 'var(--text-muted)' };
+        const sp = resultSpec(s), v = saved[r.key] || {};
+        const label = r.nested ? `${t.label} · media` : t.label;
+        const secondVal = sp.second === 'pace' ? (v.pace_sec != null ? fmtPaceQ(v.pace_sec) : '') : (v.dist_km != null ? fmtDist(v.dist_km) : '');
+        const inp = (f, ph, val) => `<input type="text" class="res-in" data-key="${r.key}" data-f="${f}" data-plain="${sp.plain}" data-label="${esc(label)}" placeholder="${esc(ph)}" value="${esc(val)}">`;
+        return `
+            <div class="res-step ${r.nested ? 'is-nested' : ''}"><span class="res-bar" style="background:${t.color}"></span><div>
+                <div class="res-top"><i class="fa-solid ${t.icon}" style="color:${t.color}"></i>${esc(label)}${s.zone ? `<span class="zone-chip">${esc(zoneNorm(s.zone))}</span>` : ''}</div>
+                <div class="res-planline">Previsto: ${esc(stepPlanText(s))}</div>
+                <div class="res-ins">
+                    <div><label>Tempo</label>${inp('time', sp.timePh, v.time_s != null ? fmtDuration(v.time_s) : '')}</div>
+                    <div><label>${sp.secondLabel}</label>${inp(sp.second, sp.secondPh, secondVal)}</div>
+                </div></div></div>`;
+    }).join('');
+}
+
+function parseResultInput(inp) {
+    const raw = inp.value.trim();
+    if (!raw) return null;
+    if (inp.dataset.f === 'time') return parseDuration(raw, inp.dataset.plain);
+    if (inp.dataset.f === 'pace') return parsePaceOne(raw);
+    return parseDistanceKm(raw);
+}
+function normalizeResultInput(inp) {
+    const v = parseResultInput(inp);
+    const bad = !!inp.value.trim() && v == null;
+    inp.classList.toggle('is-bad', bad);
+    if (v == null) return;
+    inp.value = inp.dataset.f === 'time' ? fmtDuration(v) : inp.dataset.f === 'pace' ? fmtPaceQ(v) : fmtDist(v);
+}
+
+// Solo i campi compilati; il pace si calcola da tempo e distanza quando possibile
+function readStepResults(plan) {
+    const steps = planSummary(plan).steps;
+    const byKey = {};
+    resultRows(steps).forEach(r => { if (!r.head) byKey[r.key] = r.step; });
+    const out = {};
+    document.querySelectorAll('#exec-steps .res-in').forEach(inp => {
+        const v = parseResultInput(inp);
+        if (v == null) return;
+        const o = out[inp.dataset.key] || (out[inp.dataset.key] = { label: inp.dataset.label });
+        if (inp.dataset.f === 'time') o.time_s = v;
+        if (inp.dataset.f === 'pace') o.pace_sec = v;
+        if (inp.dataset.f === 'dist') o.dist_km = v;
+    });
+    Object.entries(out).forEach(([k, o]) => {
+        const s = byKey[k];
+        const d = o.dist_km ?? (s && s.mode === 'dist' ? s.dist_km : null);
+        if (o.pace_sec == null && o.time_s && d) o.pace_sec = Math.round(o.time_s / d);
+    });
+    return Object.keys(out).length ? out : null;
+}
+
 async function saveExecutionWorkout(e) {
     e.preventDefault();
     const form = document.getElementById('execution-form');
@@ -1546,32 +1859,42 @@ async function saveExecutionWorkout(e) {
     if (status === 'done') {
         const dist = parseFloat(document.getElementById('exec-dist').value) || 0;
         const time = parseDuration(document.getElementById('exec-time').value, 'min');
-        if (dist <= 0) { alert('Inserisci la distanza percorsa.'); return; }
+        if (document.querySelector('#exec-steps .res-in.is-bad')) { alert('Controlla i valori segnati in rosso nel risultato per passo.'); return; }
         payload = {
             user_id: currentUser, date: document.getElementById('exec-date').value, status,
             title: document.getElementById('exec-title').value.trim() || title,
             dist, time_exec: time ? fmtDuration(time) : null,
-            pace: time ? fmtPaceSec(time / dist) : null,
-            pace_sec: time ? Math.round(time / dist) : null,
+            pace: time && dist ? fmtPaceSec(time / dist) : null,
+            pace_sec: time && dist ? Math.round(time / dist) : null,
             hr_zone: document.getElementById('exec-hr').value,
             hr: gpxData?.hr || null,
-            notes: notes || null
+            notes: notes || null,
+            step_results: plan ? readStepResults(plan) : null
         };
     } else if (status === 'to-fix') {
-        payload = { user_id: currentUser, date: baseDate, status, title, dist: 0, time_exec: null, pace: null, pace_sec: null, hr_zone: null, hr: null, notes: notes || null };
+        payload = { user_id: currentUser, date: baseDate, status, title, dist: 0, time_exec: null, pace: null, pace_sec: null, hr_zone: null, hr: null, notes: notes || null, step_results: null };
     } else {
         moveTo = document.getElementById('exec-date').value;
         if (!moveTo || moveTo === baseDate) { alert('Scegli una nuova data diversa da quella attuale.'); return; }
         const [y, m, d] = moveTo.split('-');
         payload = {
             user_id: currentUser, date: baseDate, status, title, dist: 0, time_exec: null, pace: null, pace_sec: null, hr_zone: null, hr: null,
-            notes: `Spostato al ${d}/${m}/${y}` + (notes ? ` · ${notes}` : '')
+            notes: `Spostato al ${d}/${m}/${y}` + (notes ? ` · ${notes}` : ''),
+            step_results: null
         };
     }
 
-    const { error } = execId
-        ? await supabaseClient.from('imported_workouts').update(payload).eq('id', execId)
-        : await supabaseClient.from('imported_workouts').insert([payload]);
+    const send = pl => execId
+        ? supabaseClient.from('imported_workouts').update(pl).eq('id', execId)
+        : supabaseClient.from('imported_workouts').insert([pl]);
+    let { error } = await send(payload);
+    // Se nel database manca ancora la colonna step_results, salva il resto e avvisa
+    if (error && /step_results/.test(error.message || '')) {
+        const hadSteps = !!payload.step_results;
+        delete payload.step_results;
+        ({ error } = await send(payload));
+        if (!error && hadSteps) alert('Risultato salvato, ma senza i passi: nel database manca la colonna step_results (vedi file supabase-risultati-passi.sql).');
+    }
     if (reportError(execId ? 'modifica esecuzione' : 'registrazione esecuzione', error)) return;
 
     // Spostamento: l'allenamento pianificato va alla nuova data
@@ -1603,7 +1926,7 @@ async function deleteImportedWorkout(id) {
    CALCOLATRICE PACE + PREVISIONI GARA + RITMI DI ALLENAMENTO
    ===================================================================== */
 
-const RACE_DISTANCES = [['5 Km', 5], ['10 Km', 10], ['Mezza', 21.0975], ['Maratona', 42.195]];
+const RACE_DISTANCES = [['5 km', 5], ['10 km', 10], ['Mezza', 21.0975], ['Maratona', 42.195]];
 
 function initCalculatorExtras() {
     const distInput = document.getElementById('calc-dist');
@@ -1660,7 +1983,7 @@ function renderCalcExtras(dist, sec) {
     if (!dist || !sec) {
         box.innerHTML = `
             <div class="calc-form-card calc-extra">
-                <span class="res-title">Cosa Puoi Calcolare</span>
+                <span class="res-title">Cosa puoi calcolare</span>
                 <p class="calc-tip">Inserisci la distanza e il tempo di una gara o di un test (es. 5 km in 27:30) per vedere la velocità, i passaggi, la previsione sulle altre distanze e i ritmi consigliati per ogni allenamento.</p>
             </div>`;
         return;
@@ -1669,14 +1992,14 @@ function renderCalcExtras(dist, sec) {
     const kmh = 3600 / pace;
     const p10 = riegel(sec, dist, 10) / 10; // pace equivalente sui 10 km
 
-    const splits = [['400 m', 0.4], ['1 Km', 1], ['5 Km', 5], ['10 Km', 10], ['Mezza', 21.0975], ['Maratona', 42.195]];
+    const splits = [['400 m', 0.4], ['1 km', 1], ['5 km', 5], ['10 km', 10], ['Mezza', 21.0975], ['Maratona', 42.195]];
     const zones = [
-        ['Corsa Di Recupero', 'Z1', 75, 95],
-        ['Fondo Lento / Lungo', 'Z2', 50, 70],
-        ['Fondo Medio', 'Z3', 25, 35],
-        ['Soglia (Tempo Run)', 'Z4', 5, 12],
-        ['Ripetute Lunghe (1000 m)', 'Z4', -8, 0],
-        ['Ripetute Brevi (400 m)', 'Z5', -22, -12]
+        ['Corsa di recupero', 'Z1', 75, 95],
+        ['Fondo lento / lungo', 'Z2', 50, 70],
+        ['Fondo medio', 'Z3', 25, 35],
+        ['Soglia (tempo run)', 'Z4', 5, 12],
+        ['Ripetute lunghe (1000 m)', 'Z4', -8, 0],
+        ['Ripetute brevi (400 m)', 'Z5', -22, -12]
     ];
     const row = (a, b, c = '') => `<div class="calc-row"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`;
 
@@ -1685,14 +2008,14 @@ function renderCalcExtras(dist, sec) {
             <span class="res-title">Velocità</span>
             ${row('Pace', fmtPaceSec(pace) + ' /km')}
             ${row('Velocità', fmtNum(kmh, 1) + ' km/h')}
-            ${row('Al Giro Di Pista (400 m)', fmtDuration(pace * 0.4))}
+            ${row('Al giro di pista (400 m)', fmtDuration(pace * 0.4))}
         </div>
         <div class="calc-form-card calc-extra">
-            <span class="res-title">Passaggi A Questo Ritmo</span>
+            <span class="res-title">Passaggi a questo ritmo</span>
             ${splits.map(([l, d]) => row(l, fmtDuration(pace * d))).join('')}
         </div>
         <div class="calc-form-card calc-extra">
-            <span class="res-title">Previsione Gare</span>
+            <span class="res-title">Previsione gare</span>
             ${RACE_DISTANCES.map(([l, d]) => {
                 const t = riegel(sec, dist, d);
                 return row(l, fmtDuration(t), fmtPaceSec(t / d) + ' /km');
@@ -1700,7 +2023,7 @@ function renderCalcExtras(dist, sec) {
             <p class="calc-tip">Stima con la formula di Riegel: è più affidabile per distanze vicine a quella inserita. Per la maratona serve anche un buon volume di lunghi.</p>
         </div>
         <div class="calc-form-card calc-extra">
-            <span class="res-title">Ritmi Di Allenamento Consigliati</span>
+            <span class="res-title">Ritmi di allenamento consigliati</span>
             ${zones.map(([l, z, a, b]) => row(l, `${fmtPaceSec(p10 + a)}–${fmtPaceSec(p10 + b)}`, z)).join('')}
             <p class="calc-tip">Calcolati dal tuo ritmo equivalente sui 10 km (${fmtPaceSec(p10)} /km). Sono indicazioni: se il cuore sale oltre la zona indicata, rallenta.</p>
         </div>`;
@@ -1717,9 +2040,9 @@ function renderCalcExtras(dist, sec) {
    2) altrimenti dal miglior allenamento "Fatto" degli ultimi 120 giorni (≥ 3 km): stima prudente
    ===================================================================== */
 
-const RECORD_DISTANCES = [['5KM', 5], ['10KM', 10], ['Mezza Maratona', 21.0975], ['Maratona', 42.195]];
+const RECORD_DISTANCES = [['5KM', 5], ['10KM', 10], ['Mezza maratona', 21.0975], ['Maratona', 42.195]];
 
-// Nome della distanza: 5KM, 10KM, Mezza Maratona, Maratona, altrimenti es. "15KM"
+// Nome della distanza: 5KM, 10KM, Mezza maratona, Maratona, altrimenti es. "15KM"
 function recordLabel(km) {
     const known = RECORD_DISTANCES.find(([, d]) => Math.abs(d - km) < 0.05);
     return known ? known[0] : fmtDist(km).toUpperCase().replace(' ', '');
@@ -1738,7 +2061,7 @@ function estimateRace(distKm) {
     const recs = userGoals('record').filter(r => r.time_s && r.dist_km);
     if (recs.length) {
         const best = recs.reduce((a, b) => Math.abs(Math.log(b.dist_km / distKm)) < Math.abs(Math.log(a.dist_km / distKm)) ? b : a);
-        return { time: riegel(best.time_s, best.dist_km, distKm), source: `Dal Record ${fmtDist(best.dist_km)} (${fmtDuration(best.time_s)})` };
+        return { time: riegel(best.time_s, best.dist_km, distKm), source: `Dal record ${fmtDist(best.dist_km)} (${fmtDuration(best.time_s)})` };
     }
     const since = new Date(); since.setDate(since.getDate() - 120);
     const runs = userImported().filter(e => e.status === 'done' && parseFloat(e.dist) >= 3 && parseDuration(e.time_exec, 'min') && parseLocalDate(e.date) >= since);
@@ -1746,7 +2069,7 @@ function estimateRace(distKm) {
     let best = null;
     runs.forEach(e => {
         const t = riegel(parseDuration(e.time_exec, 'min'), parseFloat(e.dist), distKm);
-        if (!best || t < best.time) best = { time: t, source: `Dall'Allenamento Del ${fmtDateShort(e.date)} (Stima Prudente)` };
+        if (!best || t < best.time) best = { time: t, source: `Dall'Allenamento del ${fmtDateShort(e.date)} (stima prudente)` };
     });
     return best;
 }
@@ -1765,13 +2088,13 @@ function initGoalsUI() {
                     <form id="goal-form" onsubmit="saveGoal(event)">
                         <input type="hidden" id="goal-id">
                         <input type="hidden" id="goal-kind">
-                        <label id="goal-name-label">Nome Gara</label>
-                        <input type="text" id="goal-name" placeholder="Es. Corsa Di San Martino">
+                        <label id="goal-name-label">Nome gara</label>
+                        <input type="text" id="goal-name" placeholder="Es. corsa di San Martino">
                         <label>Data</label>
                         <input type="date" id="goal-date" required>
                         <label>Distanza (km)</label>
                         <input type="text" id="goal-dist" inputmode="decimal" placeholder="es. 10 o 21,1" required>
-                        <label id="goal-time-label">Tempo Obiettivo (Facoltativo)</label>
+                        <label id="goal-time-label">Tempo obiettivo (facoltativo)</label>
                         <input type="text" id="goal-time" placeholder="es. 50:00 o 1:50:00">
                         <small class="bs-hint" id="goal-hint"></small>
                         <div class="modal-actions">
@@ -1805,7 +2128,7 @@ function renderProfile() {
     const box = document.getElementById('profile-goals');
     if (!box) return;
     if (goalsUnavailable) {
-        box.innerHTML = `<div class="profile-card"><p class="calc-tip">Per usare Gare e Record esegui una volta lo script <strong>supabase-goals.sql</strong> in Supabase → SQL Editor, poi ricarica la pagina.</p></div>`;
+        box.innerHTML = `<div class="profile-card"><p class="calc-tip">Per usare gare e record esegui una volta lo script <strong>supabase-goals.sql</strong> in Supabase → SQL Editor, poi ricarica la pagina.</p></div>`;
         return;
     }
     const today = toLocalISO(new Date());
@@ -1817,7 +2140,7 @@ function renderProfile() {
         const days = Math.round((parseLocalDate(r.date) - parseLocalDate(today)) / 86400000);
         const extra = `
             <div class="goal-foot">
-                <span>${[r.name ? esc(titleCase(r.name)) : '', isPast ? 'Conclusa' : `<b>${days === 0 ? 'Oggi' : days === 1 ? 'Domani' : `Tra ${days} Giorni`}</b>`, r.time_s ? `Obiettivo ${fmtDuration(r.time_s)}` : ''].filter(Boolean).join(' · ')}</span>
+                <span>${[r.name ? esc(titleCase(r.name)) : '', isPast ? 'Conclusa' : `<b>${days === 0 ? 'Oggi' : days === 1 ? 'Domani' : `Tra ${days} giorni`}</b>`, r.time_s ? `Obiettivo ${fmtDuration(r.time_s)}` : ''].filter(Boolean).join(' · ')}</span>
                 <span class="icon-btn-row">
                     <button class="btn-circle-muted" title="Modifica" onclick="event.stopPropagation(); openGoalModal('race', '${r.id}')"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-circle-red" title="Elimina" onclick="event.stopPropagation(); deleteGoal('${r.id}')"><i class="fa-solid fa-minus"></i></button>
@@ -1847,16 +2170,16 @@ function renderProfile() {
 
     box.innerHTML = `
         <div class="goal-section-head">
-            <span>Gare In Programma</span>
-            <button class="btn-circle-green" title="Aggiungi Gara" onclick="openGoalModal('race')"><i class="fa-solid fa-plus"></i></button>
+            <span>Gare in programma</span>
+            <button class="btn-circle-green" title="Aggiungi gara" onclick="openGoalModal('race')"><i class="fa-solid fa-plus"></i></button>
         </div>
-        ${future.length ? future.map(r => raceCard(r, false)).join('') : '<p class="empty-steps">Nessuna Gara In Programma. Aggiungila Con Il +.</p>'}
-        ${past.length ? `<div class="goal-section-head"><span>Gare Passate</span></div>${past.map(r => raceCard(r, true)).join('')}` : ''}
+        ${future.length ? future.map(r => raceCard(r, false)).join('') : '<p class="empty-steps">Nessuna gara in programma. Aggiungila con il +.</p>'}
+        ${past.length ? `<div class="goal-section-head"><span>Gare passate</span></div>${past.map(r => raceCard(r, true)).join('')}` : ''}
         <div class="goal-section-head">
-            <span>Record Personali</span>
-            <button class="btn-circle-green" title="Aggiungi Record" onclick="openGoalModal('record')"><i class="fa-solid fa-plus"></i></button>
+            <span>Record personali</span>
+            <button class="btn-circle-green" title="Aggiungi record" onclick="openGoalModal('record')"><i class="fa-solid fa-plus"></i></button>
         </div>
-        ${recCards || '<p class="empty-steps">Nessun Record. Aggiungilo Con Il +.</p>'}
+        ${recCards || '<p class="empty-steps">Nessun record. Aggiungilo con il +.</p>'}
         <p class="calc-tip">Puoi aggiungere record su qualsiasi distanza (es. 5, 10, 15, 21,1 km). La stima delle gare usa il record con la distanza più vicina (formula di Riegel); senza record usa il tuo miglior allenamento recente, quindi è più prudente.</p>`;
 }
 
@@ -1867,10 +2190,10 @@ function openGoalModal(kind, id = null, recordDist = null) {
     document.getElementById('goal-id').value = g ? g.id : '';
     document.getElementById('goal-kind').value = kind;
     document.getElementById('goal-modal-title').textContent = isRecord
-        ? (g ? `Record ${recordLabel(g.dist_km)}` : 'Nuovo Record')
-        : (g ? 'Modifica Gara' : 'Nuova Gara');
+        ? (g ? `Record ${recordLabel(g.dist_km)}` : 'Nuovo record')
+        : (g ? 'Modifica gara' : 'Nuova gara');
     ['goal-name', 'goal-name-label'].forEach(i => document.getElementById(i).style.display = isRecord ? 'none' : '');
-    document.getElementById('goal-time-label').textContent = isRecord ? 'Tempo' : 'Tempo Obiettivo (Facoltativo)';
+    document.getElementById('goal-time-label').textContent = isRecord ? 'Tempo' : 'Tempo obiettivo (facoltativo)';
     document.getElementById('goal-time').required = isRecord;
     const distEl = document.getElementById('goal-dist');
     distEl.readOnly = false;
@@ -1892,7 +2215,7 @@ function updateGoalHint() {
     if (d && t) parts.push(`Ritmo ${fmtPaceSec(t / d)} /km`);
     if (d && document.getElementById('goal-kind').value === 'race') {
         const est = estimateRace(d);
-        if (est) parts.push(`Stima Attuale ${fmtDuration(est.time)}`);
+        if (est) parts.push(`Stima attuale ${fmtDuration(est.time)}`);
     }
     document.getElementById('goal-hint').textContent = parts.join(' · ');
 }

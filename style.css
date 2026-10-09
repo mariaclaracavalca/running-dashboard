@@ -594,3 +594,124 @@ body { overscroll-behavior-x: none; }
 .modal-content { overflow-x: hidden; }
 .modal input, .modal select, .modal textarea { font-size: 16px; max-width: 100%; }
 .modal .bs-fields .bs-value, .modal .bs-fields .bs-pace { min-width: 0; width: 7.5em; }
+
+/* ---- Stato esecuzione: icone colorate ---- */
+.status-chips { display: flex; gap: 8px; }
+.status-chip {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: var(--card-inner); color: var(--text-muted);
+    border: 1px solid var(--border-color); border-radius: 12px;
+    padding: 8px 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer;
+}
+.status-chip i { color: var(--st); font-size: 1.15rem; }
+.status-chip.active { border-color: var(--st); color: var(--text-white); background: rgba(255, 255, 255, 0.04); }
+
+/* ---- Pulsanti di aggiunta nella struttura: quadrati e verdi ---- */
+#plan-modal .btn-add-pill,
+.bs-add-field {
+    background: rgba(0, 230, 118, 0.1);
+    color: var(--green);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    border-radius: 6px;
+}
+.bs-add-field { padding: 4px 9px; }
+.bs-field input[hidden] { display: none !important; }
+.bs-fields .bs-pace-mode { width: auto !important; }
+.modal .bs-fields .bs-pace-slow, .modal .bs-fields .bs-pace-fast { min-width: 0; width: 7.5em; }
+
+/* ---- Import GPX più piccolo e delicato ---- */
+.gpx-drop-zone {
+    border: 1px dashed rgba(255, 121, 198, 0.45);
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 121, 198, 0.03);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    text-align: left;
+}
+.gpx-drop-zone i { font-size: 1rem !important; }
+.gpx-drop-zone p { font-size: 0.78rem; color: var(--text-muted); margin: 0; flex: 1; min-width: 140px; }
+.gpx-drop-zone input[type="file"] { font-size: 0.75rem !important; padding: 4px; width: 100%; }
+.bs-field.f-pace { flex-wrap: wrap; }
+.modal .bs-fields .bs-pace-slow, .modal .bs-fields .bs-pace-fast { width: 6.2em; }
+#upload-modal .gpx-drop-zone input[type="file"] { padding: 2px 0; background: transparent; border: none; border-radius: 0; font-size: 0.75rem; }
+.bs-flabel { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+
+/* ---- Struttura: passi vuoti, passo selezionato, gruppi di pulsanti ---- */
+.builder-step.is-active { border-color: var(--pink); }
+.pills-label { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 0 6px 2px; }
+/* Le impostazioni si aggiungono solo dai pulsanti fuori dal passo (in basso) */
+.builder-step .bs-add-fields { display: none; }
+
+/* Data del giorno: maiuscola solo all'inizio (es. "Giovedì 8 ottobre") */
+.selected-date-header { text-transform: none; }
+
+/* ---- Duplica passo / blocco ---- */
+.bs-head .bs-copy { width: 26px; height: 26px; }
+.builder-step.bs-copied, .builder-block.bs-copied { border-color: var(--green) !important; transition: border-color 0.3s; }
+.bs-fields .bs-zone { padding-right: 30px !important; background-position: right 6px center !important; }
+
+/* =====================================================================
+   COLORI: rosa = app / pianificato · arancione = gare
+           blu = titoli e dati · lilla = recupero, riposo e zone (ZF)
+   ===================================================================== */
+:root {
+    --sky: #58a6ff;   --sky-bg: rgba(88, 166, 255, 0.12);   --sky-border: rgba(88, 166, 255, 0.35);
+    --lilac: #bc8cff; --lilac-bg: rgba(188, 140, 255, 0.12); --lilac-border: rgba(188, 140, 255, 0.35);
+}
+/* Titoli di sezione e icone dei dati in blu */
+.optional-fields-box > span:first-child { color: var(--sky) !important; }
+.steps-title { color: var(--sky); }
+.summary-box-item small i { color: var(--sky); }
+.res-item.highlight strong, .calc-row strong { color: var(--sky); }
+/* Nome dei passi nel builder con il colore del tipo */
+.builder-step[data-type="warmup"] > .bs-head .builder-active-label,
+.builder-step[data-type="cooldown"] > .bs-head .builder-active-label { color: var(--sky); }
+.builder-step[data-type="recovery"] > .bs-head .builder-active-label,
+.builder-step[data-type="rest"] > .bs-head .builder-active-label { color: var(--lilac); }
+/* ZF: testo lilla su fondo lilla trasparente */
+.bs-fields .bs-zone {
+    color: var(--lilac) !important; background-color: var(--lilac-bg) !important;
+    border-color: var(--lilac-border) !important; font-weight: bold;
+}
+.bs-fields .bs-zone option { color: var(--text-white); background: var(--card-bg); }
+.zone-chip {
+    margin-left: auto; flex-shrink: 0; white-space: nowrap;
+    font-size: 0.72rem; font-weight: bold; padding: 3px 8px; border-radius: 8px;
+    color: var(--lilac); background: var(--lilac-bg); border: 1px solid var(--lilac-border);
+}
+
+/* ---- Colori dei passi: riscaldamento = fuoco, defaticamento = ghiaccio,
+        recupero e riposo = arancione vivace (la ZF resta lilla su fondo lilla) ---- */
+:root { --warm: #ff7b72; --ice: #8be9fd; --rest: #ff9f1c; }
+.builder-step[data-type="warmup"] > .bs-head .builder-active-label { color: var(--warm); }
+.builder-step[data-type="cooldown"] > .bs-head .builder-active-label { color: var(--ice); }
+.builder-step[data-type="recovery"] > .bs-head .builder-active-label,
+.builder-step[data-type="rest"] > .bs-head .builder-active-label { color: var(--rest); }
+
+/* ---- Card allenamento: "Aggiungi risultato" + "Vedi dettagli" sulla stessa riga ---- */
+.card-actions-row .btn-full-workout { white-space: nowrap; }
+.btn-full-workout.btn-result { background: rgba(0, 230, 118, 0.15); color: var(--green); border-color: rgba(0, 230, 118, 0.3); }
+
+/* ---- Schermata Pace: "Calcola pace" e "Azzera" metà e metà, Azzera in rosso ---- */
+.calc-actions .btn-action-cta { flex: 1 1 0; min-width: 0; }
+.calc-actions .btn-reset-yellow { background: rgba(255, 85, 85, 0.15); color: var(--red); border-color: rgba(255, 85, 85, 0.3); }
+
+/* ---- Risultato: riferimento al piano e risultato per passo ---- */
+.res-plan { background: var(--card-inner); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; font-size: 0.82rem; color: var(--text-muted); }
+.res-plan[hidden] { display: none; }
+.res-plan b { color: var(--text-white); }
+.res-steps-title { color: var(--sky); font-size: 0.72rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 6px 0 2px; }
+.res-steps-title small { color: var(--text-muted); text-transform: none; font-weight: normal; letter-spacing: 0; }
+.res-step { display: grid; grid-template-columns: 4px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+.res-step:last-child { border-bottom: none; }
+.res-step.is-nested { margin-left: 14px; }
+.res-bar { border-radius: 2px; }
+.res-top { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.88rem; }
+.res-top i { width: 16px; text-align: center; }
+.res-planline { font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 6px 24px; }
+.res-ins { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-left: 24px; }
+.res-ins > div { min-width: 0; }
+.res-ins label { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px; }
+#upload-modal .res-ins input { padding: 7px 9px; border-radius: 8px; font-size: 16px; }
+#upload-modal .res-ins input.is-bad { border-color: var(--red); }
